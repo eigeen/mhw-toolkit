@@ -2,8 +2,12 @@ use std::ffi::{c_char, CString};
 
 use crate::{game_export, util};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum WeaponType {
+    /// invalid
+    #[default]
+    Invalid = -1,
     /// 大剑
     GreatSowrd = 0,
     /// 片手剑
@@ -36,13 +40,29 @@ pub enum WeaponType {
 
 impl PartialEq<i32> for WeaponType {
     fn eq(&self, other: &i32) -> bool {
-        *self as i32 == *other
+        match self {
+            WeaponType::GreatSowrd => *other == 0,
+            WeaponType::SwordAndShield => *other == 1,
+            WeaponType::DualBlades => *other == 2,
+            WeaponType::LongSword => *other == 3,
+            WeaponType::Hammer => *other == 4,
+            WeaponType::HuntingHorn => *other == 5,
+            WeaponType::Lance => *other == 6,
+            WeaponType::Gunlance => *other == 7,
+            WeaponType::SwitchAxe => *other == 8,
+            WeaponType::ChargeBlade => *other == 9,
+            WeaponType::InsectGlaive => *other == 10,
+            WeaponType::Bow => *other == 11,
+            WeaponType::HeavyBowgun => *other == 12,
+            WeaponType::LightBowgun => *other == 13,
+            WeaponType::Invalid => false,
+        }
     }
 }
 
-impl From<i32> for WeaponType {
-    fn from(value: i32) -> Self {
-        match value {
+impl WeaponType {
+    pub fn from_i32(id: i32) -> Self {
+        match id {
             0 => WeaponType::GreatSowrd,
             1 => WeaponType::SwordAndShield,
             2 => WeaponType::DualBlades,
@@ -57,7 +77,72 @@ impl From<i32> for WeaponType {
             11 => WeaponType::Bow,
             12 => WeaponType::HeavyBowgun,
             13 => WeaponType::LightBowgun,
-            _ => panic!("Invalid weapon type"),
+            _ => WeaponType::Invalid,
+        }
+    }
+
+    pub fn as_i32(&self) -> i32 {
+        *self as i32
+    }
+}
+
+/// 特殊装备ID
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum SpecializedToolType {
+    #[default]
+    None = -1,
+    GhillieMantle = 0,
+    TemporalMantle,
+    HealthBooster,
+    RocksteadyMantle,
+    ChallengerMantle,
+    VitalityMantle,
+    FireproofMantle,
+    WaterproofMantle,
+    IceproofMantle,
+    ThunderproofMantle,
+    DragonproofMantle,
+    CleanserBooster,
+    GliderMantle,
+    EvasionMantle,
+    ImpactMantle,
+    ApothecaryMantle,
+    ImmunityMantle,
+    AffinityBooster,
+    BanditMantle,
+    AssassinsHood,
+}
+
+impl PartialEq<i32> for SpecializedToolType {
+    fn eq(&self, other: &i32) -> bool {
+        *self as i32 == *other
+    }
+}
+
+impl From<i32> for SpecializedToolType {
+    fn from(value: i32) -> Self {
+        match value {
+            0 => SpecializedToolType::GhillieMantle,
+            1 => SpecializedToolType::TemporalMantle,
+            2 => SpecializedToolType::HealthBooster,
+            3 => SpecializedToolType::RocksteadyMantle,
+            4 => SpecializedToolType::ChallengerMantle,
+            5 => SpecializedToolType::VitalityMantle,
+            6 => SpecializedToolType::FireproofMantle,
+            7 => SpecializedToolType::WaterproofMantle,
+            8 => SpecializedToolType::IceproofMantle,
+            9 => SpecializedToolType::DragonproofMantle,
+            10 => SpecializedToolType::CleanserBooster,
+            11 => SpecializedToolType::GliderMantle,
+            12 => SpecializedToolType::EvasionMantle,
+            13 => SpecializedToolType::ImpactMantle,
+            14 => SpecializedToolType::ApothecaryMantle,
+            15 => SpecializedToolType::ImmunityMantle,
+            16 => SpecializedToolType::AffinityBooster,
+            17 => SpecializedToolType::BanditMantle,
+            18 => SpecializedToolType::AssassinsHood,
+            _ => SpecializedToolType::None,
         }
     }
 }
@@ -74,6 +159,14 @@ struct UGUIChat {
 }
 
 pub fn show_game_message(message: &str) {
+    // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
+    // 可能存在不稳定性，待测试
+    if util::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
+        .map_or(true, |ptr| ptr.is_null())
+    {
+        return;
+    };
+
     let show_message: extern "C" fn(*const usize, *const c_char, i32, i32, u8) =
         unsafe { std::mem::transmute(0x141A53400_i64) };
     let message_cstring = CString::new(message).unwrap();
@@ -138,6 +231,9 @@ mod chat {
 
     use super::send_chat_message;
 
+    /// 聊天消息发送工具
+    ///
+    /// 通过队列和锁防止高频发送吞消息的问题
     pub struct ChatMessageSender {
         queue: Arc<Mutex<VecDeque<String>>>,
         cond_var: Arc<Condvar>,
@@ -197,6 +293,62 @@ mod chat {
             )
             .map(|res| !res)
             .unwrap_or(false)
+        }
+    }
+
+    /// 接收聊天消息工具
+    pub struct ChatMessageReceiver {
+        prefix: String,
+    }
+
+    impl ChatMessageReceiver {
+        pub fn new() -> Self {
+            Self {
+                prefix: String::new(),
+            }
+        }
+
+        /// 前缀过滤
+        ///
+        /// 将会通过设置的前缀过滤消息\
+        /// 只接收满足前缀的消息\
+        /// 否则将会消费所有消息（这可能会导致其他进程无法接收消息）
+        pub fn set_prefix_filter(&mut self, prefix: &str) {
+            self.prefix = prefix.to_string();
+        }
+
+        pub fn try_recv(&self) -> Option<String> {
+            if let Some(msg_ptr) = util::get_ptr_with_offset(
+                game_export::MESSAGE_BASE,
+                game_export::MESSAGE_BODY_OFFSETS,
+            ) {
+                let msg_ptr = msg_ptr as *mut u8;
+                if let Some(msg_len_ptr) = util::get_ptr_with_offset(
+                    game_export::MESSAGE_BASE,
+                    game_export::MESSAGE_LEN_OFFSETS,
+                ) {
+                    let msg_len = unsafe { *msg_len_ptr };
+                    if msg_len == 0 {
+                        return None;
+                    }
+                    let msg = unsafe {
+                        String::from_utf8_lossy(std::slice::from_raw_parts(
+                            msg_ptr,
+                            msg_len as usize,
+                        ))
+                    };
+                    if msg.starts_with(&self.prefix) {
+                        let msg = msg.to_string();
+                        // 清除缓冲区防止重复读
+                        unsafe {
+                            std::ptr::write_bytes(msg_ptr, 0, msg_len as usize);
+                            *(msg_len_ptr as *mut i32) = 0;
+                        }
+                        return Some(msg);
+                    }
+                }
+            };
+            None
         }
     }
 }
@@ -278,4 +430,18 @@ mod chat {
     }
 }
 
+pub use chat::ChatMessageReceiver;
 pub use chat::ChatMessageSender;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_weapon_type() {
+        let longsword_id: i32 = 3;
+        assert!(WeaponType::LongSword == longsword_id);
+        assert!(WeaponType::LongSword.as_i32() == 3);
+        assert!(WeaponType::from_i32(3) == WeaponType::LongSword);
+    }
+}
