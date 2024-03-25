@@ -1,7 +1,7 @@
-#[cfg(feature = "log")]
-fn link_loader_ffi() {
-    println!("cargo:rustc-link-lib=static=LoaderFFI");
-}
+// #[cfg(feature = "logger")]
+// fn link_loader_ffi() {
+//     println!("cargo:rustc-link-lib=static=LoaderFFI");
+// }
 
 #[cfg(feature = "LuaEngine")]
 fn link_luae() {
@@ -13,6 +13,6 @@ fn main() {
 
     #[cfg(feature = "LuaEngine")]
     link_luae();
-    #[cfg(feature = "log")]
-    link_loader_ffi()
+    // #[cfg(feature = "logger")]
+    // link_loader_ffi()
 }

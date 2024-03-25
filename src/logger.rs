@@ -74,7 +74,7 @@ pub fn log_to_loader(level: LogLevel, message: &str) {
     unsafe { Log(level as i32, c_str.as_ptr()) }
 }
 
-/// loader log 的 `log` crate 实现
+/// logger 的 `log` crate 实现
 pub struct MHWLogger {
     prefix: String,
 }
