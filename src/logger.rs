@@ -10,6 +10,7 @@ extern "C" {
 }
 
 #[repr(i32)]
+#[derive(Clone)]
 pub enum LogLevel {
     Debug = 0,
     Info = 1,
@@ -25,6 +26,17 @@ impl From<log::Level> for LogLevel {
             log::Level::Info => Self::Info,
             log::Level::Debug => Self::Debug,
             log::Level::Trace => Self::Debug,
+        }
+    }
+}
+
+impl Into<log::Level> for LogLevel {
+    fn into(self) -> log::Level {
+        match self {
+            LogLevel::Error => log::Level::Error,
+            LogLevel::Warn => log::Level::Warn,
+            LogLevel::Info => log::Level::Info,
+            LogLevel::Debug => log::Level::Debug,
         }
     }
 }
@@ -74,7 +86,7 @@ pub fn log_to_loader(level: LogLevel, message: &str) {
     unsafe { Log(level as i32, c_str.as_ptr()) }
 }
 
-/// logger 的 `log` crate 实现
+/// logger 的 `log` crate 基本实现
 pub struct MHWLogger {
     prefix: String,
 }
