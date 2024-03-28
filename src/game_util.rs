@@ -155,7 +155,7 @@ struct UGUIChat {
     unk: i32,
     is_text_bar_visible: i32,
     space: u8,
-    chat_buffer: [u8; 256],
+    chat_buffer: [u8; 128],
 }
 
 pub fn show_game_message(message: &str) {
@@ -194,17 +194,17 @@ pub fn send_chat_message(message: &str) {
         None => return,
     };
     // 写入文本
-    let mut buffer: [u8; 256] = [0; 256];
+    let mut buffer: [u8; 128] = [0; 128];
     let bytes_without_nul = message_cstring.as_bytes();
-    if bytes_without_nul.len() > 256 {
-        buffer[0..255].copy_from_slice(&bytes_without_nul[0..255]);
+    if bytes_without_nul.len() > 128 {
+        buffer[0..127].copy_from_slice(&bytes_without_nul[0..127]);
     } else {
         buffer[0..bytes_without_nul.len()]
             .copy_from_slice(&bytes_without_nul[0..bytes_without_nul.len()]);
         buffer[bytes_without_nul.len()] = b'\0';
     }
     unsafe {
-        (*chat).chat_buffer[0..256].copy_from_slice(&buffer);
+        (*chat).chat_buffer[0..128].copy_from_slice(&buffer);
     }
     // 发送
     unsafe {
