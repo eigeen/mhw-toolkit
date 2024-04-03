@@ -1,8 +1,4 @@
-use core::time;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::{atomic::AtomicBool, mpsc::Receiver},
-};
+use std::collections::{HashMap, HashSet};
 
 use once_cell::sync::Lazy;
 use strum_macros::FromRepr;
@@ -12,6 +8,7 @@ use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
 use windows::{core::PCWSTR, Win32::UI::WindowsAndMessaging::GetForegroundWindow};
 
 use crate::game_export::XBOX_PAD_PTR;
+use crate::util;
 
 static MHW_LP_CLASS_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
     "MT FRAMEWORK"
@@ -214,100 +211,98 @@ impl KeybindManager {
 
     /// 更新控制器按键状态
     fn update_controller(&mut self) {
-        unsafe {
-            let mut up: bool;
-            let mut down: bool;
-            let mut left: bool;
-            let mut right: bool;
-            // LJoystick
-            if Self::get_xbox_state(0xC44) > 0.0 {
-                up = true;
-                down = false;
-            } else {
-                up = false;
-                down = true;
-            }
-            if Self::get_xbox_state(0xC40) > 0.0 {
-                right = true;
-                left = false;
-            } else {
-                right = false;
-                left = true;
-            }
-            self.controller_key_states
-                .insert(ControllerCode::LJoystickUp, up);
-            self.controller_key_states
-                .insert(ControllerCode::LJoystickDown, down);
-            self.controller_key_states
-                .insert(ControllerCode::LJoystickLeft, left);
-            self.controller_key_states
-                .insert(ControllerCode::LJoystickRight, right);
-            // RJoystick
-            if Self::get_xbox_state(0xC48) > 0.0 {
-                up = true;
-                down = false;
-            } else {
-                up = false;
-                down = true;
-            }
-            if Self::get_xbox_state(0xC4C) > 0.0 {
-                right = true;
-                left = false;
-            } else {
-                right = false;
-                left = true;
-            }
-            self.controller_key_states
-                .insert(ControllerCode::RJoystickUp, up);
-            self.controller_key_states
-                .insert(ControllerCode::RJoystickDown, down);
-            self.controller_key_states
-                .insert(ControllerCode::RJoystickLeft, left);
-            self.controller_key_states
-                .insert(ControllerCode::RJoystickRight, right);
-            // buttons
-            self.controller_key_states.insert(
-                ControllerCode::LJoystickPress,
-                Self::get_xbox_state(0xC64) != 0.0,
-            );
-            self.controller_key_states.insert(
-                ControllerCode::RJoystickPress,
-                Self::get_xbox_state(0xC68) != 0.0,
-            );
-            self.controller_key_states
-                .insert(ControllerCode::LT, Self::get_xbox_state(0xC88) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::RT, Self::get_xbox_state(0xC8C) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::LB, Self::get_xbox_state(0xC80) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::RB, Self::get_xbox_state(0xC84) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Up, Self::get_xbox_state(0xC70) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Right, Self::get_xbox_state(0xC74) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Down, Self::get_xbox_state(0xC78) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Left, Self::get_xbox_state(0xC7C) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Y, Self::get_xbox_state(0xC90) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::B, Self::get_xbox_state(0xC94) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::A, Self::get_xbox_state(0xC98) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::X, Self::get_xbox_state(0xC9C) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Window, Self::get_xbox_state(0xC60) != 0.0);
-            self.controller_key_states
-                .insert(ControllerCode::Menu, Self::get_xbox_state(0xC6C) != 0.0);
+        let mut up: bool;
+        let mut down: bool;
+        let mut left: bool;
+        let mut right: bool;
+        // LJoystick
+        if Self::get_xbox_state(0xC44) > 0.0 {
+            up = true;
+            down = false;
+        } else {
+            up = false;
+            down = true;
         }
+        if Self::get_xbox_state(0xC40) > 0.0 {
+            right = true;
+            left = false;
+        } else {
+            right = false;
+            left = true;
+        }
+        self.controller_key_states
+            .insert(ControllerCode::LJoystickUp, up);
+        self.controller_key_states
+            .insert(ControllerCode::LJoystickDown, down);
+        self.controller_key_states
+            .insert(ControllerCode::LJoystickLeft, left);
+        self.controller_key_states
+            .insert(ControllerCode::LJoystickRight, right);
+        // RJoystick
+        if Self::get_xbox_state(0xC48) > 0.0 {
+            up = true;
+            down = false;
+        } else {
+            up = false;
+            down = true;
+        }
+        if Self::get_xbox_state(0xC4C) > 0.0 {
+            right = true;
+            left = false;
+        } else {
+            right = false;
+            left = true;
+        }
+        self.controller_key_states
+            .insert(ControllerCode::RJoystickUp, up);
+        self.controller_key_states
+            .insert(ControllerCode::RJoystickDown, down);
+        self.controller_key_states
+            .insert(ControllerCode::RJoystickLeft, left);
+        self.controller_key_states
+            .insert(ControllerCode::RJoystickRight, right);
+        // buttons
+        self.controller_key_states.insert(
+            ControllerCode::LJoystickPress,
+            Self::get_xbox_state(0xC64) > 0.0,
+        );
+        self.controller_key_states.insert(
+            ControllerCode::RJoystickPress,
+            Self::get_xbox_state(0xC68) > 0.0,
+        );
+        self.controller_key_states
+            .insert(ControllerCode::LT, Self::get_xbox_state(0xC88) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::RT, Self::get_xbox_state(0xC8C) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::LB, Self::get_xbox_state(0xC80) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::RB, Self::get_xbox_state(0xC84) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Up, Self::get_xbox_state(0xC70) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Right, Self::get_xbox_state(0xC74) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Down, Self::get_xbox_state(0xC78) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Left, Self::get_xbox_state(0xC7C) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Y, Self::get_xbox_state(0xC90) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::B, Self::get_xbox_state(0xC94) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::A, Self::get_xbox_state(0xC98) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::X, Self::get_xbox_state(0xC9C) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Window, Self::get_xbox_state(0xC60) > 0.0);
+        self.controller_key_states
+            .insert(ControllerCode::Menu, Self::get_xbox_state(0xC6C) > 0.0);
     }
 
     #[inline]
-    unsafe fn get_xbox_state(offset: isize) -> f32 {
-        *XBOX_PAD_PTR.byte_offset(offset)
+    fn get_xbox_state(offset: isize) -> f32 {
+        util::get_value_with_offset(XBOX_PAD_PTR, &[offset]).unwrap_or(-1.0)
     }
 
     /// 获取游戏窗口句柄

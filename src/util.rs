@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    ptr::{self, null},
+    ptr,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
