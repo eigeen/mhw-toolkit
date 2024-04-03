@@ -173,7 +173,7 @@ pub fn show_game_message(message: &str) {
     show_message(
         unsafe { *game_export::CHAT_MAIN_PTR as *const usize },
         message_cstring.as_ptr(),
-        -1,
+        message.len() as i32,
         -1,
         0,
     )

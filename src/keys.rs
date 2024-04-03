@@ -1,97 +1,219 @@
 use core::time;
 use std::{
-    collections::HashMap,
-    ffi::OsString,
-    os::windows::ffi::OsStrExt,
-    sync::{
-        atomic::AtomicBool,
-        mpsc::{self, Receiver},
-    },
-    thread,
+    collections::{HashMap, HashSet},
+    sync::{atomic::AtomicBool, mpsc::Receiver},
 };
 
 use once_cell::sync::Lazy;
 use strum_macros::FromRepr;
-use winapi::um::winuser::{FindWindowW, GetForegroundWindow, GetKeyState};
+use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
+use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
+use windows::{core::PCWSTR, Win32::UI::WindowsAndMessaging::GetForegroundWindow};
 
 use crate::game_export::XBOX_PAD_PTR;
 
-static MHW_LP_CLASS_NAME: Lazy<Vec<u16>> =
-    Lazy::new(|| OsString::from("MT FRAMEWORK").encode_wide().collect());
+static MHW_LP_CLASS_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
+    "MT FRAMEWORK"
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect()
+});
 static MHW_LP_WINDOW_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
-    OsString::from("MONSTER HUNTER: WORLD(421652)")
-        .encode_wide()
+    "MONSTER HUNTER: WORLD(421652)"
+        .encode_utf16()
+        .chain(std::iter::once(0))
         .collect()
 });
 
-pub struct Keys<'a> {
-    controller_key_states: HashMap<ControllerCode, bool>,
-    check_interval: time::Duration,
-    listening: AtomicBool,
-    rx: Option<Receiver<&'a [GameKeyCode]>>,
+type KeyEventCallback = Box<dyn Fn(&KeyEvent) + 'static + Send + Sync>;
+type HotkeyEventCallback = Box<dyn Fn(&HotkeyEvent) + 'static + Send + Sync>;
+type Hotkey = Vec<GameKeyCode>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyState {
+    KeyDown,
+    KeyUp,
 }
 
-impl<'a> Keys<'a> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeyEvent {
+    pub key: GameKeyCode,
+    pub state: KeyState,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HotkeyEvent {
+    pub keys: Hotkey,
+    pub state: KeyState,
+}
+
+/// 按键绑定管理
+///
+/// 注册按键和绑定事件
+///
+/// 典型用例：
+///
+/// ```
+/// fn main() {
+///     let mut key_manager = KeybindManager::new();
+///     key_manager.add_key_listener(&GameKeyCode::KeyboardMouse(VKeyCode::Tab), |event| {
+///         println!("KeyEvent: {:?}", event);
+///     });
+///     key_manager.add_hotkey_listener(
+///         &[
+///             GameKeyCode::KeyboardMouse(VKeyCode::Ctrl),
+///             GameKeyCode::KeyboardMouse(VKeyCode::A),
+///         ],
+///         |event| {
+///             println!("HotkeyEvent: {:?}", event);
+///         },
+///     );
+///     loop {
+///         key_manager.update();
+///         thread::sleep(Duration::from_millis(20));
+///     }
+/// }
+/// ```
+pub struct KeybindManager {
+    controller_key_states: HashMap<ControllerCode, bool>,
+    key_states: HashMap<GameKeyCode, bool>,
+    registered_keys: HashSet<GameKeyCode>,
+    key_callbacks: HashMap<GameKeyCode, Vec<KeyEventCallback>>,
+    hotkey_callbacks: HashMap<Hotkey, Vec<HotkeyEventCallback>>,
+}
+
+impl KeybindManager {
     pub fn new() -> Self {
         Self {
             controller_key_states: HashMap::new(),
-            check_interval: time::Duration::from_millis(100),
-            listening: AtomicBool::new(false),
-            rx: None,
-        }
-    }
-    fn check_window() -> bool {
-        unsafe {
-            let wnd = GetForegroundWindow();
-            if wnd.is_null() {
-                return false;
-            }
-            let mhd = FindWindowW(MHW_LP_CLASS_NAME.as_ptr(), MHW_LP_WINDOW_NAME.as_ptr());
-            if mhd.is_null() {
-                return false;
-            }
-
-            wnd == mhd
+            key_states: HashMap::new(),
+            registered_keys: HashSet::new(),
+            key_callbacks: HashMap::new(),
+            hotkey_callbacks: HashMap::new(),
         }
     }
 
-    pub fn check_key(&self, gk: GameKeyCode) -> bool {
+    /// 注册一个按键事件监听器
+    pub fn add_key_listener<F>(&mut self, key: &GameKeyCode, f: F)
+    where
+        F: Fn(&KeyEvent) + 'static + Send + Sync,
+    {
+        self.key_callbacks
+            .entry(key.clone())
+            .or_insert_with(Vec::new)
+            .push(Box::new(f));
+        self.registered_keys.insert(key.clone());
+    }
+
+    /// 注册一个热键按键事件监听器
+    pub fn add_hotkey_listener<F>(&mut self, hotkey: &[GameKeyCode], f: F)
+    where
+        F: Fn(&HotkeyEvent) + 'static + Send + Sync,
+    {
+        self.hotkey_callbacks
+            .entry(hotkey.to_vec())
+            .or_insert_with(Vec::new)
+            .push(Box::new(f));
+        for key in hotkey.iter() {
+            self.registered_keys.insert(key.clone());
+        }
+    }
+
+    /// 更新按键数据，调用按键事件
+    pub fn update(&mut self) {
         if !Self::check_window() {
-            return false;
+            return;
         }
+        self.update_controller();
 
+        for key in self.registered_keys.iter() {
+            let state = self.key_states.get(key).unwrap_or(&false);
+            if self.check_key_down(key) {
+                // 按键转换为按下状态
+                if !state {
+                    let key_event = KeyEvent {
+                        key: *key,
+                        state: KeyState::KeyDown,
+                    };
+                    // 单按键执行
+                    self.execute_single_key(&key_event);
+                    // 热键处理和执行
+                    self.execute_hotkey(&key_event);
+                }
+                self.key_states.insert(*key, true);
+            } else {
+                // 按键转换为非按下状态
+                if *state {
+                    let key_event = KeyEvent {
+                        key: *key,
+                        state: KeyState::KeyUp,
+                    };
+                    // 单按键执行
+                    self.execute_single_key(&key_event);
+                    // 热键处理和执行
+                    self.execute_hotkey(&key_event);
+                }
+                self.key_states.insert(*key, false);
+            }
+        }
+    }
+
+    // 执行单按键事件
+    fn execute_single_key(&self, event: &KeyEvent) {
+        if let Some(fns) = self.key_callbacks.get(&event.key) {
+            fns.iter().for_each(|f| f(&event));
+        }
+    }
+
+    // 执行热键事件
+    fn execute_hotkey(&self, event: &KeyEvent) {
+        for (hotkey, callbacks) in self.hotkey_callbacks.iter() {
+            if hotkey.contains(&event.key) {
+                // 需要除了当前按键之外的所有键全部处于按下状态
+                let is_active = hotkey.iter().all(|key| {
+                    if key == &event.key {
+                        true
+                    } else {
+                        *self.key_states.get(key).unwrap_or(&false)
+                    }
+                });
+
+                if is_active {
+                    let hotkey_event = HotkeyEvent {
+                        keys: hotkey.clone(),
+                        state: event.state,
+                    };
+                    callbacks.iter().for_each(|f| f(&hotkey_event));
+                }
+            }
+        }
+    }
+
+    /// 某个按键是否处于按下状态
+    fn check_key_down(&self, gk: &GameKeyCode) -> bool {
         match gk {
             GameKeyCode::KeyboardMouse(vk) => self.check_keyboard_mouse(vk),
             GameKeyCode::Controller(ck) => self.check_controller(ck),
         }
     }
 
-    pub fn check_keys(&self, gks: &[GameKeyCode]) -> bool {
-        gks.iter().all(|gk| self.check_key(*gk))
-    }
-
-    fn check_keyboard_mouse(&self, vk: VKeyCode) -> bool {
+    /// 键鼠按键按下状态检查
+    fn check_keyboard_mouse(&self, vk: &VKeyCode) -> bool {
         let state = unsafe { GetKeyState(vk.to_code()) };
         state < 0
     }
 
-    fn check_controller(&self, ck: ControllerCode) -> bool {
+    /// 控制器按下状态检查
+    fn check_controller(&self, ck: &ControllerCode) -> bool {
         match self.controller_key_states.get(&ck) {
             Some(state) => *state,
             None => false,
         }
     }
 
-    pub fn check_interval(self, interval: time::Duration) -> Self {
-        self
-    }
-
-    #[inline]
-    unsafe fn get_xbox_state(offset: isize) -> f32 {
-        *XBOX_PAD_PTR.byte_offset(offset)
-    }
-
-    pub fn update_controller(&mut self) {
+    /// 更新控制器按键状态
+    fn update_controller(&mut self) {
         unsafe {
             let mut up: bool;
             let mut down: bool;
@@ -182,9 +304,40 @@ impl<'a> Keys<'a> {
                 .insert(ControllerCode::Menu, Self::get_xbox_state(0xC6C) != 0.0);
         }
     }
+
+    #[inline]
+    unsafe fn get_xbox_state(offset: isize) -> f32 {
+        *XBOX_PAD_PTR.byte_offset(offset)
+    }
+
+    /// 获取游戏窗口句柄
+    fn get_game_window() -> HWND {
+        unsafe {
+            FindWindowW(
+                PCWSTR(MHW_LP_CLASS_NAME.as_ptr()),
+                PCWSTR(MHW_LP_WINDOW_NAME.as_ptr()),
+            )
+        }
+    }
+
+    /// 检查当前活动窗口是否为游戏窗口
+    fn check_window() -> bool {
+        unsafe {
+            let wnd = GetForegroundWindow();
+            if wnd.0 == 0 {
+                return false;
+            }
+            let mhd = Self::get_game_window();
+            if mhd.0 == 0 {
+                return false;
+            }
+
+            wnd == mhd
+        }
+    }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameKeyCode {
     KeyboardMouse(VKeyCode),
     Controller(ControllerCode),

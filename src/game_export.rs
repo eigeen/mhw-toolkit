@@ -16,6 +16,9 @@ pub const MESSAGE_BASE: *const i32 = 0x144F85DB0 as *const i32;
 pub const MESSAGE_LEN_OFFSETS: &[isize] = &[0xBC];
 pub const MESSAGE_BODY_OFFSETS: &[isize] = &[0xC0];
 
+/// 怪物数据
+pub struct Monster {}
+
 /// 玩家数据
 /// Position                坐标信息
 /// Model                   模型信息
