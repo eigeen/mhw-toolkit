@@ -1,27 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use once_cell::sync::Lazy;
 use strum_macros::FromRepr;
-use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
-use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
-use windows::{core::PCWSTR, Win32::UI::WindowsAndMessaging::GetForegroundWindow};
 
 use crate::game_export::XBOX_PAD_PTR;
 use crate::util;
-
-static MHW_LP_CLASS_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
-    "MT FRAMEWORK"
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect()
-});
-static MHW_LP_WINDOW_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
-    "MONSTER HUNTER: WORLD(421652)"
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect()
-});
 
 type KeyEventCallback = Box<dyn Fn(&KeyEvent) + 'static + Send + Sync>;
 type HotkeyEventCallback = Box<dyn Fn(&HotkeyEvent) + 'static + Send + Sync>;
@@ -119,7 +102,7 @@ impl KeybindManager {
 
     /// 更新按键数据，调用按键事件
     pub fn update(&mut self) {
-        if !Self::check_window() {
+        if !util::is_mhw_foreground() {
             return;
         }
         self.update_controller();
@@ -303,32 +286,6 @@ impl KeybindManager {
     #[inline]
     fn get_xbox_state(offset: isize) -> f32 {
         util::get_value_with_offset(XBOX_PAD_PTR, &[offset]).unwrap_or(-1.0)
-    }
-
-    /// 获取游戏窗口句柄
-    fn get_game_window() -> HWND {
-        unsafe {
-            FindWindowW(
-                PCWSTR(MHW_LP_CLASS_NAME.as_ptr()),
-                PCWSTR(MHW_LP_WINDOW_NAME.as_ptr()),
-            )
-        }
-    }
-
-    /// 检查当前活动窗口是否为游戏窗口
-    fn check_window() -> bool {
-        unsafe {
-            let wnd = GetForegroundWindow();
-            if wnd.0 == 0 {
-                return false;
-            }
-            let mhd = Self::get_game_window();
-            if mhd.0 == 0 {
-                return false;
-            }
-
-            wnd == mhd
-        }
     }
 }
 
