@@ -196,7 +196,7 @@ pub fn send_chat_message(message: &str) {
     // 写入文本
     let mut buffer: [u8; 128] = [0; 128];
     let bytes_without_nul = message_cstring.as_bytes();
-    if bytes_without_nul.len() > 128 {
+    if bytes_without_nul.len() >= 128 {
         buffer[0..127].copy_from_slice(&bytes_without_nul[0..127]);
     } else {
         buffer[0..bytes_without_nul.len()]
