@@ -1,4 +1,6 @@
-use strum::FromRepr;
+use std::str::FromStr;
+
+use strum::{EnumString, FromRepr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameKeyCode {
@@ -6,7 +8,24 @@ pub enum GameKeyCode {
     Controller(ControllerCode),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromRepr)]
+impl GameKeyCode {
+    pub fn from_str(code: &str) -> Option<Self> {
+        if code.starts_with("Controller:") {
+            // 解析为手柄按键
+            let code = &code["Controller:".len()..];
+            ControllerCode::from_str(code)
+                .ok()
+                .map(|c_code| GameKeyCode::Controller(c_code))
+        } else {
+            // 解析为键盘按键
+            VKeyCode::from_str(code)
+                .ok()
+                .map(|v_code| GameKeyCode::KeyboardMouse(v_code))
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString)]
 pub enum ControllerCode {
     LJoystickUp,
     LJoystickRight,
@@ -30,12 +49,12 @@ pub enum ControllerCode {
     B,
     A,
     X,
-    Window,
+    Back,
     Menu,
 }
 
 /// 键码表
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromRepr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromRepr, EnumString)]
 #[repr(i32)]
 pub enum VKeyCode {
     LMouse = 1,
@@ -146,12 +165,6 @@ pub enum VKeyCode {
     SingleQuote = 222,
 
     Other(i32),
-}
-
-impl ControllerCode {
-    pub fn from(code: usize) -> Self {
-        ControllerCode::from_repr(code).unwrap_or_else(|| ControllerCode::A)
-    }
 }
 
 impl VKeyCode {

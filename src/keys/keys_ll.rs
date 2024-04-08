@@ -283,7 +283,7 @@ impl KeyBindEngine {
         self.controller_key_states
             .insert(ControllerCode::X, Self::get_xbox_state(0xC9C) > 0.0);
         self.controller_key_states
-            .insert(ControllerCode::Window, Self::get_xbox_state(0xC60) > 0.0);
+            .insert(ControllerCode::Back, Self::get_xbox_state(0xC60) > 0.0);
         self.controller_key_states
             .insert(ControllerCode::Menu, Self::get_xbox_state(0xC6C) > 0.0);
     }
