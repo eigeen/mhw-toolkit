@@ -3,6 +3,7 @@ pub mod game_util;
 pub mod keys;
 pub mod macros;
 pub mod util;
+pub mod game;
 
 #[cfg(feature = "logger")]
 pub mod logger;

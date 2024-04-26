@@ -41,7 +41,7 @@ where
     unsafe { Some(*base_addr) }
 }
 
-/// 获取某个地址经过多级偏移后指向的值 \
+/// 获取某个地址经过多级偏移后指向的值（的副本） \
 /// 该函数与CE中多级偏移取值算法一致
 ///
 /// addr: 裸指针 \
@@ -70,6 +70,31 @@ where
         }
         // 最后一级取值作为真实值返回
         Some(*addr)
+    }
+}
+
+/// 获取某个地址经过多级偏移后指向的值的引用 \
+/// 该函数与CE中多级偏移取值算法一致
+///
+/// addr: 裸指针 \
+/// offsets: 多级偏移量（单位：byte） \
+/// return: 若多级偏移时出现空指针，则返回None，否则返回Some(T)
+pub fn get_ref_with_offset<T>(base_addr: *const T, offsets: &[isize]) -> Option<&'static T> {
+    if base_addr.is_null() {
+        return None;
+    }
+    let mut addr = base_addr;
+    unsafe {
+        // 取值+偏移
+        // 取值后需要判断是否为空指针
+        for &offset in offsets.iter() {
+            let valptr = *(addr as *const *const T);
+            if valptr.is_null() {
+                return None;
+            }
+            addr = valptr.byte_offset(offset);
+        }
+        Some(&*addr)
     }
 }
 
