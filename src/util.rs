@@ -94,7 +94,7 @@ pub fn get_ref_with_offset<T>(base_addr: *const T, offsets: &[isize]) -> Option<
             }
             addr = valptr.byte_offset(offset);
         }
-        Some(&*addr)
+        Some(addr.as_ref().unwrap())
     }
 }
 

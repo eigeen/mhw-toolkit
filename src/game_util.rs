@@ -218,7 +218,6 @@ pub fn send_chat_message(message: &str) {
     }
 }
 
-#[cfg(not(feature = "async-tokio"))]
 mod chat {
     use std::{
         collections::VecDeque,
@@ -349,83 +348,6 @@ mod chat {
                 }
             };
             None
-        }
-    }
-}
-
-#[cfg(feature = "async-tokio")]
-mod chat {
-
-    use std::{collections::VecDeque, sync::Arc};
-
-    use tokio::sync::{Mutex, Notify};
-    use tokio::time::Duration;
-
-    use crate::{game_export, util};
-
-    use super::send_chat_message;
-
-    pub struct ChatMessageSender {
-        queue: Arc<Mutex<VecDeque<String>>>,
-        notify: Arc<Notify>,
-    }
-
-    impl ChatMessageSender {
-        pub fn new() -> Self {
-            let instance = Self {
-                queue: Arc::new(Mutex::new(VecDeque::new())),
-                notify: Arc::new(Notify::new()),
-            };
-            instance.start_background_sender();
-
-            instance
-        }
-
-        /// 向队列追加一条消息
-        pub async fn send(&self, msg: &str) {
-            let mut queue = self.queue.lock().await;
-            queue.push_back(msg.to_string());
-            self.notify.notify_one();
-        }
-
-        pub fn start_background_sender(&self) {
-            let queue_clone = self.queue.clone();
-            let notify_clone = self.notify.clone();
-
-            tokio::spawn(async move {
-                loop {
-                    let mut queue = queue_clone.lock().await;
-                    while queue.is_empty() {
-                        notify_clone.notified().await;
-                    }
-                    let msg = queue.pop_front().unwrap();
-                    drop(queue);
-
-                    while !Self::try_send(&msg).await {
-                        tokio::time::sleep(Duration::from_millis(17)).await;
-                    }
-                }
-            });
-        }
-
-        /// 单次尝试发送消息
-        pub async fn try_send(msg: &str) -> bool {
-            if Self::can_send().await {
-                send_chat_message(msg);
-                true
-            } else {
-                false
-            }
-        }
-
-        async fn can_send() -> bool {
-            // 如果是false则可以发送
-            util::get_value_with_offset(
-                game_export::U_GUI_CHAT_BASE as *const bool,
-                game_export::U_GUI_CHAT_SEND_OFFSETS,
-            )
-            .map(|res| !res)
-            .unwrap_or(false)
         }
     }
 }

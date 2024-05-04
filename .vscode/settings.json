@@ -4,6 +4,8 @@
   ],
   "rust-analyzer.showUnlinkedFileNotification": false,
   "rust-analyzer.cargo.features": [
-    // "logger",
+    "logger",
+    "hooks",
+    "async-tokio"
 ]
 }
