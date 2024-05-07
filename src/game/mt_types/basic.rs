@@ -13,7 +13,7 @@ pub trait Resource: MtObject {
     /// 获得对象的成员的引用
     fn get_value_ref<T>(&self, offset: isize) -> &'static T {
         unsafe {
-            let ptr: *const T = std::mem::transmute(self.get_instance() as isize + offset);
+            let ptr: *const T = (self.get_instance() as isize + offset) as *const T;
             ptr.as_ref().unwrap()
         }
     }

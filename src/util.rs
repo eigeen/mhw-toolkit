@@ -22,7 +22,7 @@ static MHW_LP_WINDOW_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
         .chain(std::iter::once(0))
         .collect()
 });
-static GAME_WINDOW_HWND: Lazy<HWND> = Lazy::new(|| get_game_window());
+static GAME_WINDOW_HWND: Lazy<HWND> = Lazy::new(get_game_window);
 
 /// 设置指针所指向的值
 #[inline]
@@ -251,10 +251,7 @@ where
 
     pub fn get_value(&mut self) -> Option<T> {
         if self.offset_ptr.is_null() {
-            match self.get_ptr() {
-                Some(ptr) => unsafe { Some(*ptr) },
-                None => None,
-            }
+            self.get_ptr().map(|ptr| unsafe { *ptr })
         } else {
             unsafe { Some(*self.offset_ptr) }
         }
@@ -278,6 +275,12 @@ unsafe impl<T> Sync for RawPtr<T> where T: Copy + Send + Sync {}
 
 pub struct TimeLockManager {
     lockers: Arc<Mutex<HashMap<String, TimeLock>>>,
+}
+
+impl Default for TimeLockManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TimeLockManager {

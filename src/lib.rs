@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 pub mod game_export;
 pub mod game_util;
 pub mod keys;
