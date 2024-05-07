@@ -9,7 +9,7 @@ mod ctor {
         sync::atomic::{AtomicBool, Ordering},
     };
 
-    use crate::game::hooks::HookError;
+    use crate::game::hooks::{init_mh, HookError};
 
     type MonsterCtorFunction = extern "C" fn(*const c_void, i32, i32);
     static mut ORIGINAL_FUNCTION: *mut c_void = ptr::null_mut();
@@ -44,14 +44,14 @@ mod ctor {
 
     fn create_ctor_hook() -> Result<(), HookError> {
         unsafe {
-            minhook_sys::MH_Initialize();
+            init_mh();
 
             let target_function: *mut c_void = 0x141CA1130 as *mut c_void;
 
             let create_hook_status = minhook_sys::MH_CreateHook(
                 target_function,
                 hooked_function as *mut c_void,
-                addr_of_mut!(ORIGINAL_FUNCTION) as *mut _ as *mut *mut c_void,
+                addr_of_mut!(ORIGINAL_FUNCTION),
             );
             if create_hook_status != minhook_sys::MH_OK {
                 return Err(HookError::CreateHook(create_hook_status));
@@ -73,7 +73,7 @@ mod dtor {
         sync::atomic::{AtomicBool, Ordering},
     };
 
-    use crate::game::hooks::HookError;
+    use crate::game::hooks::{init_mh, HookError};
 
     type MonsterDtorFunction = extern "C" fn(*const c_void);
     static mut ORIGINAL_FUNCTION: *mut c_void = ptr::null_mut();
@@ -108,14 +108,14 @@ mod dtor {
 
     fn create_dtor_hook() -> Result<(), HookError> {
         unsafe {
-            minhook_sys::MH_Initialize();
+            init_mh();
 
             let target_function: *mut c_void = 0x141CA3A10 as *mut c_void;
 
             let create_hook_status = minhook_sys::MH_CreateHook(
                 target_function,
                 hooked_function as *mut c_void,
-                addr_of_mut!(ORIGINAL_FUNCTION) as *mut _ as *mut *mut c_void,
+                addr_of_mut!(ORIGINAL_FUNCTION),
             );
             if create_hook_status != minhook_sys::MH_OK {
                 return Err(HookError::CreateHook(create_hook_status));

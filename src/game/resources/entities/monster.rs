@@ -53,7 +53,7 @@ impl Monster {
 }
 
 #[repr(u32)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum MonsterType {
     Anjanath = 0x00,
     Rathalos = 0x01,

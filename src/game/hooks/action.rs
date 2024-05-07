@@ -9,19 +9,19 @@ use crate::game::{
     resources::{ActionController, ActionInfo},
 };
 
-use super::HookError;
+use super::{init_mh, HookError};
 
 type DoActionFunction = extern "C" fn(*const c_void, *const ActionInfo);
 
 static mut ORIGINAL_FUNCTION: *mut c_void = ptr::null_mut();
 static HOOKED: AtomicBool = AtomicBool::new(false);
-static mut HOOK_CALLBACKS: Vec<Box<dyn Fn(ActionController, &ActionInfo)>> = Vec::new();
+static mut HOOK_CALLBACKS: Vec<Box<dyn Fn(ActionController, &mut ActionInfo)>> = Vec::new();
 
-extern "C" fn hooked_function(controller: *const c_void, action_info: *const ActionInfo) {
+extern "C" fn hooked_function(controller: *const c_void, action_info: *mut ActionInfo) {
     // 调用钩子回调
     unsafe {
         let controller = ActionController::from_instance(controller as usize);
-        let action_info = action_info.as_ref().unwrap();
+        let action_info = &mut *action_info;
         HOOK_CALLBACKS
             .iter()
             .for_each(|f| f(controller.clone(), action_info))
@@ -38,7 +38,7 @@ extern "C" fn hooked_function(controller: *const c_void, action_info: *const Act
 /// ActionController.DoAction
 pub fn hook_action<F>(f: F) -> Result<(), HookError>
 where
-    F: Fn(ActionController, &ActionInfo) + 'static,
+    F: Fn(ActionController, &mut ActionInfo) + 'static,
 {
     if !HOOKED.load(Ordering::SeqCst) {
         create_hook()?;
@@ -51,7 +51,7 @@ where
 
 fn create_hook() -> Result<(), HookError> {
     unsafe {
-        minhook_sys::MH_Initialize();
+        init_mh();
 
         let target_function: *mut c_void = 0x140269C90 as *mut c_void;
 
@@ -59,7 +59,7 @@ fn create_hook() -> Result<(), HookError> {
         let create_hook_status = minhook_sys::MH_CreateHook(
             target_function,
             hooked_function as *mut c_void,
-            addr_of_mut!(ORIGINAL_FUNCTION) as *mut _ as *mut *mut c_void,
+            addr_of_mut!(ORIGINAL_FUNCTION),
         );
         if create_hook_status != minhook_sys::MH_OK {
             return Err(HookError::CreateHook(create_hook_status));

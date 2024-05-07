@@ -41,6 +41,7 @@ impl ActionController {
         self.get_value_copy(0xC4)
     }
 
+    /// 控制器持有者（Entity）
     pub fn owner(&self) -> usize {
         self.get_value_copy(0x100)
     }
