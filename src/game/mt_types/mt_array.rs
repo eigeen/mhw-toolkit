@@ -60,7 +60,7 @@ where
     pub fn object_at(&self, index: isize) -> T {
         unsafe {
             let ptr = self.data().offset(index) as usize;
-            
+
             MtObject::from_instance(ptr)
         }
     }

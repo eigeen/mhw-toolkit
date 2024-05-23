@@ -18,6 +18,14 @@ pub trait Resource: MtObject {
         }
     }
 
+    /// 获得对象的成员的可变引用
+    fn get_value_mut<T>(&self, offset: isize) -> &'static mut T {
+        unsafe {
+            let ptr: *const T = (self.get_instance() as isize + offset) as *const T;
+            ptr.cast_mut().as_mut().unwrap()
+        }
+    }
+
     /// 获得对象的成员的副本
     fn get_value_copy<T>(&self, offset: isize) -> T
     where

@@ -1,7 +1,7 @@
 use crate::game::mt_types::{Model, MtObject, Resource};
 
 pub struct Player {
-    instance: usize
+    instance: usize,
 }
 
 impl MtObject for Player {
@@ -10,9 +10,7 @@ impl MtObject for Player {
     }
 
     fn from_instance(ptr: usize) -> Self {
-        Self {
-            instance: ptr
-        }
+        Self { instance: ptr }
     }
 }
 
@@ -20,6 +18,4 @@ impl Resource for Player {}
 
 impl Model for Player {}
 
-impl Player {
-
-}
+impl Player {}

@@ -1,9 +1,9 @@
 mod basic;
-mod mt_array;
-mod model;
 mod entity;
+mod model;
+mod mt_array;
 
 pub use basic::*;
-pub use mt_array::*;
-pub use model::*;
 pub use entity::*;
+pub use model::*;
+pub use mt_array::*;

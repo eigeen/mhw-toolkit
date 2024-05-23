@@ -12,10 +12,11 @@ use crate::game::{
 use super::{init_mh, HookError};
 
 type DoActionFunction = extern "C" fn(*const c_void, *const ActionInfo);
+type Callback = dyn Fn(ActionController, &mut ActionInfo);
 
 static mut ORIGINAL_FUNCTION: *mut c_void = ptr::null_mut();
 static HOOKED: AtomicBool = AtomicBool::new(false);
-static mut HOOK_CALLBACKS: Vec<Box<dyn Fn(ActionController, &mut ActionInfo)>> = Vec::new();
+static mut HOOK_CALLBACKS: Vec<Box<Callback>> = Vec::new();
 
 extern "C" fn hooked_function(controller: *const c_void, action_info: *mut ActionInfo) {
     // 调用钩子回调

@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use strum::{Display, EnumString};
+
 use super::{
     keys_ll::{self, KeyBindEngine},
     GameKeyCode,
@@ -11,7 +13,7 @@ use super::{
 
 type KeyEventCallback = Box<dyn Fn(&KeyEvent) + 'static + Send + Sync>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString, Display)]
 pub enum KeyEventType {
     KeyDown,
     KeyUp,
@@ -152,6 +154,27 @@ impl KeyBind {
 
     /// 更新按键数据
     pub fn update(&mut self) {
+        self.keybind_engine.update();
+        let mut hold_key_state = self.hold_keys_state.lock().unwrap();
+        for (keycode, (is_pressing, press_time)) in hold_key_state.iter_mut() {
+            if *is_pressing {
+                if let Some(binding) = self.hold_keys_binding.get(keycode) {
+                    let now = Instant::now();
+                    if now.duration_since(*press_time) > Duration::from_millis(binding.interval) {
+                        let hold_event = KeyEvent {
+                            keys: keycode.clone(),
+                            event_type: KeyEventType::Hold,
+                        };
+                        *is_pressing = false;
+                        (binding.callback)(&hold_event)
+                    }
+                };
+            }
+        }
+    }
+
+    /// 更新按键数据
+    pub async fn update_async(&mut self) {
         self.keybind_engine.update();
         let mut hold_key_state = self.hold_keys_state.lock().unwrap();
         for (keycode, (is_pressing, press_time)) in hold_key_state.iter_mut() {

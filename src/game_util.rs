@@ -158,6 +158,10 @@ struct UGUIChat {
     chat_buffer: [u8; 128],
 }
 
+/// # Deprecated
+/// 
+/// 请优先使用 `show_system_message`
+#[deprecated]
 pub fn show_game_message(message: &str) {
     // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
     // 可能存在不稳定性，待测试
@@ -179,8 +183,38 @@ pub fn show_game_message(message: &str) {
     )
 }
 
+#[repr(u8)]
+pub enum SystemMessageColor {
+    Blue = 0,
+    Purple = 1,
+}
+
+/// 在游戏右侧对话框显示系统消息
+/// 
+/// 颜色：蓝框或紫框
+pub fn show_system_message(message: &str, color: SystemMessageColor) {
+    // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
+    // 可能存在不稳定性，待测试
+    if util::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
+        .map_or(true, |ptr| ptr.is_null())
+    {
+        return;
+    };
+
+    let show_message: extern "C" fn(*const usize, *const c_char, i32, i32, u8) =
+        unsafe { std::mem::transmute(0x141A53400_i64) };
+    let message_cstring = CString::new(message).unwrap();
+    show_message(
+        unsafe { *game_export::CHAT_MAIN_PTR as *const usize },
+        message_cstring.as_ptr(),
+        message.len() as i32,
+        -1,
+        color as u8,
+    )
+}
+
 pub fn send_chat_message(message: &str) {
-    if message.len() == 0 {
+    if message.is_empty() {
         return;
     };
 
@@ -208,13 +242,12 @@ pub fn send_chat_message(message: &str) {
     }
     // 发送
     unsafe {
-        match util::get_ptr_with_offset(
+        if let Some(send_flag) = util::get_ptr_with_offset(
             game_export::U_GUI_CHAT_BASE as *const bool,
             game_export::U_GUI_CHAT_SEND_OFFSETS,
         ) {
-            Some(_send_flag) => *(_send_flag as *mut bool) = true,
-            None => return,
-        };
+            *(send_flag.cast_mut()) = true;
+        }
     }
 }
 
@@ -269,7 +302,7 @@ mod chat {
                 drop(queue);
 
                 while !Self::try_send(&msg) {
-                    thread::sleep(Duration::from_millis(17));
+                    thread::sleep(Duration::from_millis(50));
                 }
             });
         }

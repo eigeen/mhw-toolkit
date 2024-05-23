@@ -1,5 +1,6 @@
 use crate::game::mt_types::{Entity, Model, MtObject, Resource};
 
+#[derive(Clone)]
 pub struct Monster {
     instance: usize,
 }
@@ -31,20 +32,21 @@ impl Monster {
 
     pub fn health(&self) -> &'static f32 {
         let ptr = self.get_value_copy::<usize>(0x7670) + 0x64;
-        unsafe {
-            (ptr as *const f32).as_ref().unwrap()
-        }
+        unsafe { (ptr as *const f32).as_ref().unwrap() }
     }
 
     pub fn max_health(&self) -> &'static f32 {
         let ptr = self.get_value_copy::<usize>(0x7670) + 0x60;
-        unsafe {
-            (ptr as *const f32).as_ref().unwrap()
-        }
+        unsafe { (ptr as *const f32).as_ref().unwrap() }
     }
 
     pub fn speed(&self) -> &'static f32 {
         self.get_value_ref(0x1D8A8)
+    }
+
+    pub fn set_speed(&self, speed: f32) {
+        let val = self.get_value_mut(0x1D8A8);
+        *val = speed;
     }
 
     pub fn ai_data(&self) -> usize {

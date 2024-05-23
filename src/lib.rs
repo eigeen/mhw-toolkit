@@ -1,11 +1,12 @@
 #![allow(clippy::missing_safety_doc)]
 
+pub mod game;
 pub mod game_export;
 pub mod game_util;
 pub mod keys;
 pub mod macros;
 pub mod util;
-pub mod game;
+pub mod memory;
 
 #[cfg(feature = "logger")]
 pub mod logger;
