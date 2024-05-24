@@ -259,7 +259,7 @@ mod chat {
         time::Duration,
     };
 
-    use crate::{game_export, util};
+    use crate::{game_export::{self, MESSAGE_BASE, MESSAGE_BODY_OFFSETS, MESSAGE_LEN_OFFSETS}, util::{self, get_ptr_with_offset}};
 
     use super::send_chat_message;
 
@@ -329,58 +329,55 @@ mod chat {
     }
 
     /// 接收聊天消息工具
-    pub struct ChatMessageReceiver {
-        prefix: String,
+    #[derive(Clone, Debug)]
+    pub struct ChatMessageReceiver<const T: usize, const C: usize> {
+        pub buffer: [u8; T],
+        pub prefix: [u8; C],
+        len: usize,
     }
 
-    impl ChatMessageReceiver {
-        pub fn new() -> Self {
-            Self {
-                prefix: String::new(),
-            }
-        }
-
+    impl<const T: usize, const C: usize> ChatMessageReceiver<T, C> {
         /// 前缀过滤
         ///
         /// 将会通过设置的前缀过滤消息\
         /// 只接收满足前缀的消息\
         /// 否则将会消费所有消息（这可能会导致其他进程无法接收消息）
-        pub fn set_prefix_filter(&mut self, prefix: &str) {
-            self.prefix = prefix.to_string();
+        pub const fn new(prefix: [u8; C]) -> Self {
+            ChatMessageReceiver {
+                buffer: [0; T],
+                prefix,
+                len: 0,
+            }
         }
 
-        pub fn try_recv(&self) -> Option<String> {
-            if let Some(msg_ptr) = util::get_ptr_with_offset(
-                game_export::MESSAGE_BASE,
-                game_export::MESSAGE_BODY_OFFSETS,
-            ) {
-                let msg_ptr = msg_ptr as *mut u8;
-                if let Some(msg_len_ptr) = util::get_ptr_with_offset(
-                    game_export::MESSAGE_BASE,
-                    game_export::MESSAGE_LEN_OFFSETS,
-                ) {
-                    let msg_len = unsafe { *msg_len_ptr };
-                    if msg_len == 0 {
-                        return None;
+        pub fn get_message_len() -> usize {
+            if let Some(msg_len) = util::get_ptr_with_offset(MESSAGE_BASE, MESSAGE_LEN_OFFSETS) {
+                return unsafe { *msg_len } as usize;
+            }
+            0
+        }
+        pub fn read_command(&self) -> &str {
+            std::str::from_utf8(&self.buffer[C - 1..self.len]).unwrap()
+        }
+
+        pub fn try_read_command(&mut self) -> bool {
+            let msg_len = Self::get_message_len();
+            if msg_len < C {
+                return false;
+            }
+            if let Some(msg_body) = get_ptr_with_offset(MESSAGE_BASE, MESSAGE_BODY_OFFSETS) {
+                let msg = unsafe { std::slice::from_raw_parts(msg_body as *const u8, msg_len) };
+                let is_command = msg.starts_with(&self.prefix);
+                if is_command {
+                    unsafe {
+                        self.buffer[C - 1..msg_len].copy_from_slice(&msg[C - 1..]);
+                        self.len = msg_len;
+                        std::ptr::write_bytes(msg_body as *mut u8, 0, C);
                     }
-                    let msg = unsafe {
-                        String::from_utf8_lossy(std::slice::from_raw_parts(
-                            msg_ptr,
-                            msg_len as usize,
-                        ))
-                    };
-                    if msg.starts_with(&self.prefix) {
-                        let msg = msg.to_string();
-                        // 清除缓冲区防止重复读
-                        unsafe {
-                            std::ptr::write_bytes(msg_ptr, 0, msg_len as usize);
-                            *(msg_len_ptr as *mut i32) = 0;
-                        }
-                        return Some(msg);
-                    }
+                    return true;
                 }
-            };
-            None
+            }
+            false
         }
     }
 }
