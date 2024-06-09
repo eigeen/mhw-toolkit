@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::util;
+use crate::utils;
 
 use super::{
     consumables::ConsumableService, debuffs::DebuffService, Consumable, Debuff, HUEAbnormality,
@@ -18,7 +18,7 @@ pub struct AbnormalityService {
 
 impl AbnormalityService {
     pub fn new() -> Option<Self> {
-        let instance = util::get_ptr_with_offset(BASE_ADDRESS, OFFSETS).map(|ptr| ptr as usize)?;
+        let instance = utils::get_ptr_with_offset(BASE_ADDRESS, OFFSETS).map(|ptr| ptr as usize)?;
         Some(Self {
             instance,
             consumable_service: ConsumableService::new(instance),
@@ -40,19 +40,19 @@ impl AbnormalityService {
     /// 获取狩猎笛Buff的持续时间
     fn get_hue_timer(&self, hue_abnormality: HUEAbnormality) -> f32 {
         let offset = hue_abnormality as isize;
-        util::get_value_with_offset(self.instance as *const f32, &[offset]).unwrap_or(0.0)
+        utils::get_value_with_offset(self.instance as *const f32, &[offset]).unwrap_or(0.0)
     }
 
     /// 获取猫笛Buff的持续时间
     fn get_palico_timer(&self, palico_abnormality: PalicoAbnormality) -> f32 {
         let offset = palico_abnormality as isize;
-        util::get_value_with_offset(self.instance as *const f32, &[offset]).unwrap_or(0.0)
+        utils::get_value_with_offset(self.instance as *const f32, &[offset]).unwrap_or(0.0)
     }
 
     /// 获取技能Buff的持续时间
     fn get_skill_timer(&self, skill_abnormality: SkillAbnormality) -> f32 {
         let offset = skill_abnormality as isize;
-        util::get_value_with_offset(self.instance as *const f32, &[offset]).unwrap_or(0.0)
+        utils::get_value_with_offset(self.instance as *const f32, &[offset]).unwrap_or(0.0)
     }
 
     /// 获取消耗品Buff的持续时间
@@ -119,8 +119,17 @@ mod tests {
 
     #[test]
     fn test_abnormality_from_str() {
-        assert_eq!(Abnormality::from_str("HUE::SelfImprovement"), Ok(Abnormality::HUE(HUEAbnormality::SelfImprovement)));
-        assert_eq!(Abnormality::from_str("HUE::SelfImprovement"), Ok(Abnormality::HUE(HUEAbnormality::SelfImprovement)));
-        assert_eq!(Abnormality::from_str("Consumable::DashJuice"), Ok(Abnormality::Consumable(Consumable::DashJuice)));
+        assert_eq!(
+            Abnormality::from_str("HUE::SelfImprovement"),
+            Ok(Abnormality::HUE(HUEAbnormality::SelfImprovement))
+        );
+        assert_eq!(
+            Abnormality::from_str("HUE::SelfImprovement"),
+            Ok(Abnormality::HUE(HUEAbnormality::SelfImprovement))
+        );
+        assert_eq!(
+            Abnormality::from_str("Consumable::DashJuice"),
+            Ok(Abnormality::Consumable(Consumable::DashJuice))
+        );
     }
 }

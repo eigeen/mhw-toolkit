@@ -30,9 +30,9 @@ impl From<log::Level> for LogLevel {
     }
 }
 
-impl Into<log::Level> for LogLevel {
-    fn into(self) -> log::Level {
-        match self {
+impl From<LogLevel> for log::Level {
+    fn from(val: LogLevel) -> Self {
+        match val {
             LogLevel::Error => log::Level::Error,
             LogLevel::Warn => log::Level::Warn,
             LogLevel::Info => log::Level::Info,

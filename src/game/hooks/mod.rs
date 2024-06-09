@@ -12,6 +12,8 @@ pub use monster::*;
 
 use thiserror::Error;
 
+static INITIALIZE_ONCE: Once = Once::new();
+
 #[derive(Error, Debug)]
 pub enum HookError {
     #[error("failed to create hook (code {0})")]
@@ -19,10 +21,10 @@ pub enum HookError {
     #[error("hook not set")]
     HookNotSet,
     #[error("the hook position is unsuppported")]
-    UnsupportedPosition
+    UnsupportedPosition,
+    #[error("cannot find address of {0}")]
+    CannotFindAddress(String),
 }
-
-static INITIALIZE_ONCE: Once = Once::new();
 
 /// 初始化 MinHook 库
 ///
@@ -51,6 +53,6 @@ pub trait HookHandle {
     fn is_hooked(&self) -> bool;
 
     fn skip_call(&self, skip: bool) -> bool {
-        false
+        skip
     } // with default implementation
 }

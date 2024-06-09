@@ -8,13 +8,15 @@ use std::{
     },
 };
 
-use log::debug;
 use once_cell::sync::Lazy;
 use rand::RngCore;
 
-use crate::game::hooks::{init_mh, CallbackPosition, HookError, HookHandle};
+use crate::game::{
+    address::{self, AddressRepository},
+    hooks::{init_mh, CallbackPosition, HookError, HookHandle},
+};
 
-type HitFunction = extern "C" fn(*mut c_void, *mut c_void);
+type HitFunction = extern "C" fn(*mut c_void, *mut c_void) -> i64;
 type Args = (*mut c_void, *mut c_void);
 type CallbackFn = Box<dyn Fn(Args) + 'static + Send + Sync>;
 type CallbacksTable = HashMap<CallbackPosition, Vec<(u64, CallbackFn)>>;
@@ -24,9 +26,9 @@ static HOOKED: AtomicBool = AtomicBool::new(false);
 static HOOK_CALLBACKS: Lazy<Mutex<CallbacksTable>> = Lazy::new(|| Mutex::new(HashMap::new()));
 static SKIP_CALL: AtomicBool = AtomicBool::new(false);
 
-extern "C" fn hooked_function(arg1: *mut c_void, arg2: *mut c_void) {
+extern "C" fn hooked_function(arg1: *mut c_void, arg2: *mut c_void) -> i64 {
     if SKIP_CALL.load(Ordering::SeqCst) {
-        return;
+        return 0;
     }
     // Before
     if let Some(callbacks) = HOOK_CALLBACKS
@@ -39,7 +41,7 @@ extern "C" fn hooked_function(arg1: *mut c_void, arg2: *mut c_void) {
     // 调用原始函数
     unsafe {
         let original: HitFunction = std::mem::transmute(ORIGINAL_FUNCTION);
-        original(arg1, arg2);
+        original(arg1, arg2)
     }
 }
 
@@ -55,7 +57,13 @@ fn create_hit_hook() -> Result<(), HookError> {
     unsafe {
         init_mh();
 
-        let target_function: *mut c_void = 0x141F50480 as *mut c_void;
+        // 目标函数
+        let func_addr = AddressRepository::get_instance()
+            .lock()
+            .unwrap()
+            .get_address(address::player::Hit)
+            .map_err(HookError::CannotFindAddress)?;
+        let target_function: *mut c_void = func_addr as *mut c_void;
 
         let create_hook_status = minhook_sys::MH_CreateHook(
             target_function,

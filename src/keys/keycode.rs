@@ -8,19 +8,22 @@ pub enum GameKeyCode {
     Controller(ControllerCode),
 }
 
-impl GameKeyCode {
-    pub fn from_str(code: &str) -> Option<Self> {
+#[allow(clippy::should_implement_trait, clippy::manual_strip)]
+impl FromStr for GameKeyCode {
+    type Err = String;
+
+    fn from_str(code: &str) -> Result<Self, Self::Err> {
         if code.starts_with("Controller:") {
             // 解析为手柄按键
             let code = &code["Controller:".len()..];
             ControllerCode::from_str(code)
-                .ok()
-                .map(|c_code| GameKeyCode::Controller(c_code))
+                .map(GameKeyCode::Controller)
+                .map_err(|e| e.to_string())
         } else {
             // 解析为键盘按键
             VKeyCode::from_str(code)
-                .ok()
-                .map(|v_code| GameKeyCode::KeyboardMouse(v_code))
+                .map(GameKeyCode::KeyboardMouse)
+                .map_err(|e| e.to_string())
         }
     }
 }
@@ -285,5 +288,17 @@ impl VKeyCode {
             VKeyCode::SingleQuote => 222,
             VKeyCode::Other(c) => *c,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_vkeycode() {
+        assert_eq!(VKeyCode::from_str("A").unwrap(), VKeyCode::A);
+        assert_eq!(VKeyCode::from_str("Numpad0").unwrap(), VKeyCode::Numpad0);
+        assert_eq!(VKeyCode::from_str("C").unwrap(), VKeyCode::C);
     }
 }

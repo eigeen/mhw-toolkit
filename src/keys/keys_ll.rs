@@ -4,7 +4,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
 
 use super::keycode::*;
 use crate::game_export::XBOX_PAD_PTR;
-use crate::util;
+use crate::utils;
 
 type KeyEventCallback = Box<dyn Fn(&KeyEvent) + 'static + Send + Sync>;
 type Hotkey = Vec<GameKeyCode>;
@@ -24,30 +24,6 @@ pub struct KeyEvent {
 /// 低级按键绑定管理
 ///
 /// 注册按键和绑定事件
-///
-/// 典型用例：
-///
-/// ```
-/// fn main() {
-///     let mut key_manager = KeybindManager::new();
-///     key_manager.add_key_listener(&GameKeyCode::KeyboardMouse(VKeyCode::Tab), |event| {
-///         println!("KeyEvent: {:?}", event);
-///     });
-///     key_manager.add_hotkey_listener(
-///         &[
-///             GameKeyCode::KeyboardMouse(VKeyCode::Ctrl),
-///             GameKeyCode::KeyboardMouse(VKeyCode::A),
-///         ],
-///         |event| {
-///             println!("HotkeyEvent: {:?}", event);
-///         },
-///     );
-///     loop {
-///         key_manager.update();
-///         thread::sleep(Duration::from_millis(20));
-///     }
-/// }
-/// ```
 pub struct KeyBindEngine {
     controller_key_states: HashMap<ControllerCode, bool>,
     key_states: HashMap<GameKeyCode, bool>,
@@ -84,11 +60,8 @@ impl KeyBindEngine {
     where
         F: Fn(&KeyEvent) + 'static + Send + Sync,
     {
-        self.key_callbacks
-            .entry(key.clone())
-            .or_insert_with(Vec::new)
-            .push(Box::new(f));
-        self.registered_keys.insert(key.clone());
+        self.key_callbacks.entry(key).or_default().push(Box::new(f));
+        self.registered_keys.insert(key);
     }
 
     /// 注册一个多按键事件监听器
@@ -98,16 +71,16 @@ impl KeyBindEngine {
     {
         self.hotkey_callbacks
             .entry(keys.to_vec())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(Box::new(f));
         for key in keys.iter() {
-            self.registered_keys.insert(key.clone());
+            self.registered_keys.insert(*key);
         }
     }
 
     /// 更新按键数据，调用按键事件
     pub fn update(&mut self) {
-        if !util::is_mhw_foreground() {
+        if !utils::is_mhw_foreground() {
             return;
         }
         self.update_controller();
@@ -147,7 +120,7 @@ impl KeyBindEngine {
     // 执行单按键事件
     fn execute_single_key(&self, event: &KeyEvent) {
         if let Some(fns) = self.key_callbacks.get(&event.keys[0]) {
-            fns.iter().for_each(|f| f(&event));
+            fns.iter().for_each(|f| f(event));
         }
     }
 
@@ -191,7 +164,7 @@ impl KeyBindEngine {
 
     /// 控制器按下状态检查
     fn check_controller(&self, ck: &ControllerCode) -> bool {
-        match self.controller_key_states.get(&ck) {
+        match self.controller_key_states.get(ck) {
             Some(state) => *state,
             None => false,
         }
@@ -290,6 +263,12 @@ impl KeyBindEngine {
 
     #[inline]
     fn get_xbox_state(offset: isize) -> f32 {
-        util::get_value_with_offset(XBOX_PAD_PTR, &[offset]).unwrap_or(-1.0)
+        utils::get_value_with_offset(XBOX_PAD_PTR, &[offset]).unwrap_or(-1.0)
+    }
+}
+
+impl Default for KeyBindEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }

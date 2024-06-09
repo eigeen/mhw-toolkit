@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
-    ffi::{c_void, OsString},
-    os::windows::ffi::OsStringExt,
+    ffi::{c_void, CStr},
     ptr::{self, addr_of_mut},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,12 +10,13 @@ use std::{
 
 use once_cell::sync::Lazy;
 use rand::RngCore;
-use winapi::ctypes::wchar_t;
+
+use crate::game::address::{self, AddressRepository};
 
 use super::{init_mh, CallbackPosition, HookError, HookHandle};
 
-type InputDispatchFunction = extern "C" fn(*const wchar_t);
-type Args = String;
+type InputDispatchFunction = extern "C" fn(*const i8) -> i8;
+type Args = &'static str;
 type CallbackFn = Box<dyn Fn(Args) + 'static + Send + Sync>;
 type CallbacksTable = HashMap<CallbackPosition, Vec<(u64, CallbackFn)>>;
 
@@ -24,29 +24,23 @@ static mut ORIGINAL_FUNCTION: *mut c_void = ptr::null_mut();
 static HOOKED: AtomicBool = AtomicBool::new(false);
 static HOOK_CALLBACKS: Lazy<Mutex<CallbacksTable>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
-extern "C" fn hooked_function(inputs_ptr: *const wchar_t) {
-    let inputs = unsafe {
-        let raw_slice = std::slice::from_raw_parts(inputs_ptr, 128);
-        let wchar_slice = raw_slice
-            .iter()
-            .position(|&c| c == 0)
-            .map_or_else(|| raw_slice, |idx| &raw_slice[..idx]);
-        OsString::from_wide(wchar_slice)
-            .into_string()
-            .unwrap_or_else(|_| "".to_string())
-    };
+extern "C" fn hooked_function(a1: *const i8) -> i8 {
+    let inputs_ptr = unsafe { a1.byte_offset(0x1008) };
+    let input_cstr = unsafe { CStr::from_ptr(inputs_ptr) };
+    let input_str = input_cstr.to_str().unwrap_or_default();
+
     // Before
     if let Some(callbacks) = HOOK_CALLBACKS
         .lock()
         .unwrap()
         .get(&CallbackPosition::Before)
     {
-        callbacks.iter().for_each(|(_, f)| f(inputs.clone()))
+        callbacks.iter().for_each(|(_, f)| f(input_str))
     }
     // 调用原始函数
     unsafe {
         let original: InputDispatchFunction = std::mem::transmute(ORIGINAL_FUNCTION);
-        original(inputs_ptr);
+        original(inputs_ptr)
     }
 }
 
@@ -62,7 +56,12 @@ fn create_hook() -> Result<(), HookError> {
     unsafe {
         init_mh();
 
-        let target_function: *mut c_void = 0x14239D640 as *mut c_void;
+        let func_addr = AddressRepository::get_instance()
+            .lock()
+            .unwrap()
+            .get_address(address::chat::MessageSent)
+            .map_err(HookError::CannotFindAddress)?;
+        let target_function: *mut c_void = func_addr as *mut c_void;
 
         // 创建钩子
         let create_hook_status = minhook_sys::MH_CreateHook(

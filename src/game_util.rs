@@ -1,6 +1,7 @@
 use std::ffi::{c_char, CString};
 
-use crate::{game_export, util};
+use crate::game_export;
+use crate::utils;
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -159,13 +160,13 @@ struct UGUIChat {
 }
 
 /// # Deprecated
-/// 
+///
 /// 请优先使用 `show_system_message`
 #[deprecated]
 pub fn show_game_message(message: &str) {
     // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
     // 可能存在不稳定性，待测试
-    if util::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
+    if utils::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
         .map_or(true, |ptr| ptr.is_null())
     {
         return;
@@ -190,12 +191,12 @@ pub enum SystemMessageColor {
 }
 
 /// 在游戏右侧对话框显示系统消息
-/// 
+///
 /// 颜色：蓝框或紫框
 pub fn show_system_message(message: &str, color: SystemMessageColor) {
     // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
     // 可能存在不稳定性，待测试
-    if util::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
+    if utils::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
         .map_or(true, |ptr| ptr.is_null())
     {
         return;
@@ -220,7 +221,7 @@ pub fn send_chat_message(message: &str) {
 
     let message_cstring = CString::new(message).unwrap();
     // 获取 UGUIChat 结构
-    let chat = match util::get_ptr_with_offset(
+    let chat = match utils::get_ptr_with_offset(
         game_export::U_GUI_CHAT_BASE as *const UGUIChat,
         game_export::U_GUI_CHAT_STRUCT_OFFSETS,
     ) {
@@ -242,7 +243,7 @@ pub fn send_chat_message(message: &str) {
     }
     // 发送
     unsafe {
-        if let Some(send_flag) = util::get_ptr_with_offset(
+        if let Some(send_flag) = utils::get_ptr_with_offset(
             game_export::U_GUI_CHAT_BASE as *const bool,
             game_export::U_GUI_CHAT_SEND_OFFSETS,
         ) {
@@ -259,7 +260,7 @@ mod chat {
         time::Duration,
     };
 
-    use crate::{game_export, util};
+    use crate::{game_export, utils};
 
     use super::send_chat_message;
 
@@ -319,7 +320,7 @@ mod chat {
 
         fn can_send() -> bool {
             // 如果是false则可以发送
-            util::get_value_with_offset(
+            utils::get_value_with_offset(
                 game_export::U_GUI_CHAT_BASE as *const bool,
                 game_export::U_GUI_CHAT_SEND_OFFSETS,
             )
@@ -350,12 +351,12 @@ mod chat {
         }
 
         pub fn try_recv(&self) -> Option<String> {
-            if let Some(msg_ptr) = util::get_ptr_with_offset(
+            if let Some(msg_ptr) = utils::get_ptr_with_offset(
                 game_export::MESSAGE_BASE,
                 game_export::MESSAGE_BODY_OFFSETS,
             ) {
                 let msg_ptr = msg_ptr as *mut u8;
-                if let Some(msg_len_ptr) = util::get_ptr_with_offset(
+                if let Some(msg_len_ptr) = utils::get_ptr_with_offset(
                     game_export::MESSAGE_BASE,
                     game_export::MESSAGE_LEN_OFFSETS,
                 ) {

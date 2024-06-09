@@ -1,6 +1,6 @@
 use strum::EnumString;
 
-use crate::util;
+use crate::utils;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, EnumString)]
 pub enum Consumable {
@@ -98,13 +98,13 @@ impl ConsumableService {
             return f32::MAX;
         }
         let timer_offset = consumable.get_timer_offset();
-        util::get_value_with_offset(self.instance as *const f32, &[timer_offset]).unwrap_or(0.0)
+        utils::get_value_with_offset(self.instance as *const f32, &[timer_offset]).unwrap_or(0.0)
     }
 
     fn get_category(&self, consumable: Consumable) -> Option<Consumable> {
         let category_offset = consumable.get_category_offset()?;
         let category_value =
-            util::get_value_with_offset(self.instance as *const i32, &[category_offset])?;
+            utils::get_value_with_offset(self.instance as *const i32, &[category_offset])?;
         Some(match category_offset {
             0x6A4 => match category_value {
                 10 => Consumable::MightSeed,

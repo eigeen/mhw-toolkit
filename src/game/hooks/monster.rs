@@ -16,7 +16,10 @@ mod ctor {
     use once_cell::sync::Lazy;
     use rand::RngCore;
 
-    use crate::game::hooks::{init_mh, CallbackPosition, HookError, HookHandle};
+    use crate::game::{
+        address::{self, AddressRepository},
+        hooks::{init_mh, CallbackPosition, HookError, HookHandle},
+    };
 
     type MonsterCtorFunction = extern "C" fn(*const c_void, i32, i32);
     type Args = (*const c_void, i32, i32);
@@ -63,7 +66,12 @@ mod ctor {
         unsafe {
             init_mh();
 
-            let target_function: *mut c_void = 0x141CA1130 as *mut c_void;
+            let func_addr = AddressRepository::get_instance()
+                .lock()
+                .unwrap()
+                .get_address(address::monster::Ctor)
+                .map_err(HookError::CannotFindAddress)?;
+            let target_function: *mut c_void = func_addr as *mut c_void;
 
             let create_hook_status = minhook_sys::MH_CreateHook(
                 target_function,
@@ -164,7 +172,10 @@ mod dtor {
     use once_cell::sync::Lazy;
     use rand::RngCore;
 
-    use crate::game::hooks::{init_mh, CallbackPosition, HookError, HookHandle};
+    use crate::game::{
+        address::{self, AddressRepository},
+        hooks::{init_mh, CallbackPosition, HookError, HookHandle},
+    };
 
     type MonsterDtorFunction = extern "C" fn(*const c_void);
     type Args = *const c_void;
@@ -207,7 +218,12 @@ mod dtor {
         unsafe {
             init_mh();
 
-            let target_function: *mut c_void = 0x141CA3A10 as *mut c_void;
+            let func_addr = AddressRepository::get_instance()
+                .lock()
+                .unwrap()
+                .get_address(address::monster::Dtor)
+                .map_err(HookError::CannotFindAddress)?;
+            let target_function: *mut c_void = func_addr as *mut c_void;
 
             let create_hook_status = minhook_sys::MH_CreateHook(
                 target_function,

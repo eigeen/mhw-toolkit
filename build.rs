@@ -1,7 +1,4 @@
-// #[cfg(feature = "logger")]
-// fn link_loader_ffi() {
-//     println!("cargo:rustc-link-lib=static=LoaderFFI");
-// }
+// use cxx_build::CFG;
 
 #[cfg(feature = "LuaEngine")]
 fn link_luae() {
@@ -13,6 +10,4 @@ fn main() {
 
     #[cfg(feature = "LuaEngine")]
     link_luae();
-    // #[cfg(feature = "logger")]
-    // link_loader_ffi()
 }

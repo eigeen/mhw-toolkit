@@ -1,4 +1,4 @@
-use crate::util::{get_value_with_offset, RawPtr};
+use crate::utils::{get_value_with_offset, RawPtr};
 
 pub const XBOX_PAD_PTR: *const f32 = 0x1451C2318 as *const f32;
 

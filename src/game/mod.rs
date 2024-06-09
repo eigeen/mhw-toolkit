@@ -1,3 +1,4 @@
+pub mod address;
 pub mod mt_types;
 pub mod resources;
 

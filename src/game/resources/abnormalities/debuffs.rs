@@ -1,6 +1,6 @@
 use strum::EnumString;
 
-use crate::util;
+use crate::utils;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, EnumString)]
 pub enum Debuff {
@@ -63,13 +63,13 @@ impl DebuffService {
             }
         }
         let timer_offset = debuff.get_timer_offset();
-        util::get_value_with_offset(self.instance as *const f32, &[timer_offset]).unwrap_or(0.0)
+        utils::get_value_with_offset(self.instance as *const f32, &[timer_offset]).unwrap_or(0.0)
     }
 
     fn get_category(&self, debuff: Debuff) -> Option<Debuff> {
         let category_offset = debuff.get_category_offset()?;
         let category_value =
-            util::get_value_with_offset(self.instance as *const i32, &[category_offset])?;
+            utils::get_value_with_offset(self.instance as *const i32, &[category_offset])?;
         Some(match category_offset {
             0x62C => {
                 if category_value == 0 {
@@ -77,7 +77,7 @@ impl DebuffService {
                 } else {
                     Debuff::BlastScourge
                 }
-            },
+            }
             _ => panic!("Invalid category offset"),
         })
     }

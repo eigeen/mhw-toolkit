@@ -5,24 +5,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use once_cell::sync::Lazy;
-use windows::Win32::Foundation::HWND;
-use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
-use windows::{core::PCWSTR, Win32::UI::WindowsAndMessaging::GetForegroundWindow};
-
-static MHW_LP_CLASS_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
-    "MT FRAMEWORK"
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect()
-});
-static MHW_LP_WINDOW_NAME: Lazy<Vec<u16>> = Lazy::new(|| {
-    "MONSTER HUNTER: WORLD(421652)"
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect()
-});
-static GAME_WINDOW_HWND: Lazy<HWND> = Lazy::new(get_game_window);
+use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+use windows::Win32::{Foundation::HWND, System::Threading::GetCurrentProcessId};
 
 /// 设置指针所指向的值
 #[inline]
@@ -127,29 +111,27 @@ pub fn get_ptr_with_offset<T>(base_addr: *const T, offsets: &[isize]) -> Option<
     }
 }
 
-/// 获取游戏窗口句柄
-fn get_game_window() -> HWND {
-    unsafe {
-        FindWindowW(
-            PCWSTR(MHW_LP_CLASS_NAME.as_ptr()),
-            PCWSTR(MHW_LP_WINDOW_NAME.as_ptr()),
-        )
-    }
-}
-
 /// 检查当前活动窗口是否为游戏窗口
 pub fn is_mhw_foreground() -> bool {
-    unsafe {
-        let wnd = GetForegroundWindow();
-        if wnd.0 == 0 {
-            return false;
-        }
-        if GAME_WINDOW_HWND.0 == 0 {
-            return false;
-        }
-
-        wnd == *GAME_WINDOW_HWND
+    // 获取当前前台窗口句柄
+    let foreground_hwnd = unsafe { GetForegroundWindow() };
+    if foreground_hwnd.0 == 0 {
+        return false;
     }
+
+    // 获取窗口所属进程ID
+    let mut window_pid = 0;
+    unsafe {
+        let _ = GetWindowThreadProcessId(foreground_hwnd, Some(&mut window_pid));
+    }
+    if window_pid == 0 {
+        return false;
+    }
+
+    // 获取当前进程ID
+    let current_pid = unsafe { GetCurrentProcessId() };
+
+    window_pid == current_pid
 }
 
 /// 裸指针包装对象 \
