@@ -5,12 +5,12 @@ use std::{
     time::{Duration, Instant},
 };
 
+use windows::Win32::System::Threading::GetCurrentProcessId;
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
-use windows::Win32::{Foundation::HWND, System::Threading::GetCurrentProcessId};
 
 /// 设置指针所指向的值
 #[inline]
-pub unsafe fn set_ptr_value<T>(ptr: *mut T, value: T) {
+pub unsafe fn set_value<T>(ptr: *mut T, value: T) {
     *ptr = value;
 }
 
@@ -22,7 +22,7 @@ where
     if base_addr.is_null() {
         return None;
     }
-    unsafe { Some(*base_addr) }
+    Some(*base_addr)
 }
 
 /// 获取某个地址经过多级偏移后指向的值（的副本） \
@@ -122,13 +122,14 @@ pub fn is_mhw_foreground() -> bool {
     // 获取窗口所属进程ID
     let mut window_pid = 0;
     unsafe {
-        let _ = GetWindowThreadProcessId(foreground_hwnd, Some(&mut window_pid));
-    }
+        GetWindowThreadProcessId(foreground_hwnd, Some(&mut window_pid));
+    };
     if window_pid == 0 {
         return false;
     }
 
     // 获取当前进程ID
+    // 伪句柄无需关闭
     let current_pid = unsafe { GetCurrentProcessId() };
 
     window_pid == current_pid

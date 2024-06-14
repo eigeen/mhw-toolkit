@@ -1,8 +1,7 @@
 use log::{Metadata, Record};
 use std::ffi::{CString, OsString};
 use std::os::windows::ffi::OsStrExt;
-use winapi::um::stringapiset::WideCharToMultiByte;
-use winapi::um::winnls::CP_ACP;
+use windows::Win32::Globalization::{WideCharToMultiByte, CP_ACP};
 
 // from mhwloader
 extern "C" {
@@ -48,40 +47,13 @@ pub fn log_to_loader(level: LogLevel, message: &str) {
         .chain(std::iter::once(0))
         .collect();
 
-    // 计算所需的ANSI字符串长度
-    let len = unsafe {
-        WideCharToMultiByte(
-            CP_ACP,
-            0,
-            wide.as_ptr(),
-            -1,
-            std::ptr::null_mut(),
-            0,
-            std::ptr::null(),
-            std::ptr::null_mut(),
-        )
-    };
-    if len == 0 {
-        return;
-    }
-
     // 转换宽字符串为ANSI编码的字符串
-    let mut buffer: Vec<u8> = vec![0; len as usize];
-    let _ = unsafe {
-        WideCharToMultiByte(
-            CP_ACP,
-            0,
-            wide.as_ptr(),
-            -1,
-            buffer.as_mut_ptr() as *mut i8,
-            buffer.len() as i32,
-            std::ptr::null(),
-            std::ptr::null_mut(),
-        )
-    };
+    let mut buffer: [u8; 1024] = [0; 1024];
+    let _ =
+        unsafe { WideCharToMultiByte(CP_ACP, 0, wide.as_slice(), Some(&mut buffer), None, None) };
 
     // 将ANSI编码的字符串转换为CString
-    let c_str = unsafe { CString::from_vec_unchecked(buffer) };
+    let c_str = unsafe { CString::from_vec_unchecked(buffer.to_vec()) };
 
     unsafe { Log(level as i32, c_str.as_ptr()) }
 }

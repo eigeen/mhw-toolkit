@@ -1,5 +1,3 @@
-// use cxx_build::CFG;
-
 #[cfg(feature = "LuaEngine")]
 fn link_luae() {
     println!("cargo:rustc-link-lib=static=LuaEngine");
