@@ -290,7 +290,7 @@ mod chat {
             self.cond_var.notify_one();
         }
 
-        pub fn start_background_sender(&self) {
+        fn start_background_sender(&self) {
             let queue_clone = self.queue.clone();
             let condvar_clone = self.cond_var.clone();
 

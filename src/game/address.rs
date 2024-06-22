@@ -12,7 +12,7 @@ static ADDRESS_REPOSITORY: Lazy<SharedAddressRepository> =
     Lazy::new(|| Arc::new(Mutex::new(AddressRepository::new())));
 
 pub struct AddressRepository {
-    cache: HashMap<TypeId, u64>,
+    cache: HashMap<TypeId, usize>,
 }
 
 impl AddressRepository {
@@ -26,7 +26,7 @@ impl AddressRepository {
         ADDRESS_REPOSITORY.clone()
     }
 
-    pub fn get_address(&mut self, provider: impl AddressProvider) -> Result<u64, String> {
+    pub fn get_address(&mut self, provider: impl AddressProvider) -> Result<usize, String> {
         if let Some(addr) = self.cache.get(&provider.type_id()) {
             return Ok(*addr);
         }
@@ -36,7 +36,11 @@ impl AddressRepository {
                 self.cache.insert(provider.type_id(), addr);
                 Ok(addr)
             }
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(format!(
+                "Failed to get address of {}: {}",
+                provider.name(),
+                e
+            )),
         }
     }
 }
@@ -66,6 +70,10 @@ pub mod monster {
     #[derive(AddressRecord)]
     #[record(pattern = "48 8B 81 D0 00 00 00 48 85 C0 74 0F", offset = 0)]
     pub struct SetTarget;
+
+    #[derive(AddressRecord)]
+    #[record(pattern = "48 89 ?? ?? ?? 56 57 41 54 48 ?? ?? ?? 48 8B ?? ?? ?? ?? ?? 49 8B F0 48 8B DA 48 8B F9 41", offset = -5)]
+    pub struct ProcessThkSegment;
 }
 
 pub mod inline {
@@ -85,6 +93,10 @@ pub mod player {
     #[derive(AddressRecord)]
     #[record(pattern = "48 83 EC 28 48 8B 89 58 76 00 00 48 85 C9", offset = 0)]
     pub struct Hit;
+
+    #[derive(AddressRecord)]
+    #[record(pattern = "4D 8B D8 4D 85 C0 75 ?? 4C 8B ?? ?? ?? ?? ?? 45 33 C0 4C 8D ?? ?? 45 8B D0 66 90", offset = -5)]
+    pub struct RemoveCatSkill;
 }
 
 pub mod chat {
