@@ -329,6 +329,12 @@ mod chat {
         }
     }
 
+    impl Default for ChatMessageSender {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     /// 接收聊天消息工具
     pub struct ChatMessageReceiver {
         prefix: String,
@@ -382,6 +388,12 @@ mod chat {
                 }
             };
             None
+        }
+    }
+
+    impl Default for ChatMessageReceiver {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }
