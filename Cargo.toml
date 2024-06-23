@@ -29,7 +29,7 @@ windows = { version = "0.57.0", features = [
 minhook-sys = { version = "0.1", optional = true }
 thiserror = "1.0"
 rand = "0.8"
-address_scanner = { path = "../address_scanner" }
+address_scanner = { path = "../address-scanner" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
