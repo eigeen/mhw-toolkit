@@ -40,7 +40,7 @@ extern "C" fn hooked_function(a1: *const i8) -> i8 {
     // 调用原始函数
     unsafe {
         let original: InputDispatchFunction = std::mem::transmute(ORIGINAL_FUNCTION);
-        original(inputs_ptr)
+        original(a1)
     }
 }
 
@@ -133,6 +133,12 @@ impl HookHandle for InputDispatchHook {
 impl Default for InputDispatchHook {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Drop for InputDispatchHook {
+    fn drop(&mut self) {
+        let _ = self.unset_hook();
     }
 }
 

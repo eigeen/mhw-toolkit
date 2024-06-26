@@ -3,90 +3,6 @@ use std::ffi::{c_char, CString};
 use crate::game_export;
 use crate::utils;
 
-#[repr(i32)]
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum WeaponType {
-    /// invalid
-    #[default]
-    Invalid = -1,
-    /// 大剑
-    GreatSowrd = 0,
-    /// 片手剑
-    SwordAndShield = 1,
-    /// 双刀
-    DualBlades = 2,
-    /// 太刀
-    LongSword = 3,
-    /// 大锤
-    Hammer = 4,
-    /// 狩猎笛
-    HuntingHorn = 5,
-    /// 长枪
-    Lance = 6,
-    /// 铳枪
-    Gunlance = 7,
-    /// 斩斧
-    SwitchAxe = 8,
-    /// 盾斧
-    ChargeBlade = 9,
-    /// 操虫棍
-    InsectGlaive = 10,
-    /// 弓
-    Bow = 11,
-    /// 重弩炮
-    HeavyBowgun = 12,
-    /// 轻弩炮
-    LightBowgun = 13,
-}
-
-impl PartialEq<i32> for WeaponType {
-    fn eq(&self, other: &i32) -> bool {
-        match self {
-            WeaponType::GreatSowrd => *other == 0,
-            WeaponType::SwordAndShield => *other == 1,
-            WeaponType::DualBlades => *other == 2,
-            WeaponType::LongSword => *other == 3,
-            WeaponType::Hammer => *other == 4,
-            WeaponType::HuntingHorn => *other == 5,
-            WeaponType::Lance => *other == 6,
-            WeaponType::Gunlance => *other == 7,
-            WeaponType::SwitchAxe => *other == 8,
-            WeaponType::ChargeBlade => *other == 9,
-            WeaponType::InsectGlaive => *other == 10,
-            WeaponType::Bow => *other == 11,
-            WeaponType::HeavyBowgun => *other == 12,
-            WeaponType::LightBowgun => *other == 13,
-            WeaponType::Invalid => false,
-        }
-    }
-}
-
-impl WeaponType {
-    pub fn from_i32(id: i32) -> Self {
-        match id {
-            0 => WeaponType::GreatSowrd,
-            1 => WeaponType::SwordAndShield,
-            2 => WeaponType::DualBlades,
-            3 => WeaponType::LongSword,
-            4 => WeaponType::Hammer,
-            5 => WeaponType::HuntingHorn,
-            6 => WeaponType::Lance,
-            7 => WeaponType::Gunlance,
-            8 => WeaponType::SwitchAxe,
-            9 => WeaponType::ChargeBlade,
-            10 => WeaponType::InsectGlaive,
-            11 => WeaponType::Bow,
-            12 => WeaponType::HeavyBowgun,
-            13 => WeaponType::LightBowgun,
-            _ => WeaponType::Invalid,
-        }
-    }
-
-    pub fn as_i32(&self) -> i32 {
-        *self as i32
-    }
-}
-
 /// 特殊装备ID
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -400,16 +316,3 @@ mod chat {
 
 pub use chat::ChatMessageReceiver;
 pub use chat::ChatMessageSender;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_weapon_type() {
-        let longsword_id: i32 = 3;
-        assert!(WeaponType::LongSword == longsword_id);
-        assert!(WeaponType::LongSword.as_i32() == 3);
-        assert!(WeaponType::from_i32(3) == WeaponType::LongSword);
-    }
-}
