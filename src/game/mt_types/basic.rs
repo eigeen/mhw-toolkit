@@ -44,7 +44,7 @@ pub trait Resource: MtObject {
     {
         unsafe {
             let ptr = (self.get_instance() as isize + offset) as *const *const T;
-            MtObject::from_instance(*ptr as usize)
+            T::from_instance(*ptr as usize)
         }
     }
 
@@ -54,7 +54,7 @@ pub trait Resource: MtObject {
         T: MtObject,
     {
         let ptr = self.get_instance() as isize + offset;
-        MtObject::from_instance(ptr as usize)
+        T::from_instance(ptr as usize)
     }
 }
 
