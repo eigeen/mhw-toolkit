@@ -1,5 +1,5 @@
 #[repr(i32)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WeaponType {
     /// 大剑
     GreatSowrd = 0,

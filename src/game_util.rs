@@ -168,7 +168,7 @@ pub fn send_chat_message(message: &str) {
     }
 }
 
-mod chat {
+pub mod chat {
     use std::{
         collections::VecDeque,
         sync::{Arc, Condvar, Mutex},
@@ -180,11 +180,41 @@ mod chat {
 
     use super::send_chat_message;
 
+    #[repr(i32)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub enum SendTarget {
+        Default = -1,
+        Quest = 0,
+        OutsideQuest = 1,
+        Specified = 2,
+        AtHome = 3,
+        All = 4,
+    }
+
+    impl From<i32> for SendTarget {
+        fn from(value: i32) -> Self {
+            match value {
+                0 => SendTarget::Quest,
+                1 => SendTarget::OutsideQuest,
+                2 => SendTarget::Specified,
+                3 => SendTarget::AtHome,
+                4 => SendTarget::All,
+                _ => SendTarget::Default,
+            }
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct ChatMessage {
+        msg: String,
+        target: SendTarget,
+    }
+
     /// 聊天消息发送工具
     ///
     /// 通过队列和锁防止高频发送吞消息的问题
     pub struct ChatMessageSender {
-        queue: Arc<Mutex<VecDeque<String>>>,
+        queue: Arc<Mutex<VecDeque<ChatMessage>>>,
         cond_var: Arc<Condvar>,
     }
 
@@ -202,7 +232,20 @@ mod chat {
         /// 向队列追加一条消息
         pub fn send(&self, msg: &str) {
             let mut queue = self.queue.lock().unwrap();
-            queue.push_back(msg.to_string());
+            queue.push_back(ChatMessage {
+                msg: msg.to_string(),
+                target: SendTarget::Default,
+            });
+            self.cond_var.notify_one();
+        }
+
+        /// 向队列追加一条消息，附加高级选项
+        pub fn send_ex(&self, msg: &str, target: SendTarget) {
+            let mut queue = self.queue.lock().unwrap();
+            queue.push_back(ChatMessage {
+                msg: msg.to_string(),
+                target,
+            });
             self.cond_var.notify_one();
         }
 
@@ -218,7 +261,12 @@ mod chat {
                 let msg = queue.pop_front().unwrap();
                 drop(queue);
 
-                while !Self::try_send(&msg) {
+                // 设置发送目标
+                if msg.target != SendTarget::Default {
+                    Self::set_send_target(msg.target);
+                }
+                while !Self::try_send(&msg.msg) {
+                    // 自旋等待重发
                     thread::sleep(Duration::from_millis(50));
                 }
             });
@@ -234,6 +282,17 @@ mod chat {
             }
         }
 
+        ///  获取当前设置的发送目标
+        pub fn get_current_send_target() -> SendTarget {
+            let send_target_i32 = utils::get_value_with_offset(
+                game_export::U_GUI_CHAT_BASE as *const i32,
+                game_export::U_GUI_CHAT_SEND_TARGET_OFFSETS,
+            )
+            .unwrap_or(SendTarget::All as i32);
+
+            SendTarget::from(send_target_i32)
+        }
+
         fn can_send() -> bool {
             // 如果是false则可以发送
             utils::get_value_with_offset(
@@ -242,6 +301,19 @@ mod chat {
             )
             .map(|res| !res)
             .unwrap_or(false)
+        }
+
+        fn set_send_target(target: SendTarget) {
+            if let Some(send_target_i32) = utils::get_ptr_with_offset(
+                game_export::U_GUI_CHAT_BASE as *const i32,
+                game_export::U_GUI_CHAT_SEND_TARGET_OFFSETS,
+            ) {
+                unsafe {
+                    *(send_target_i32.cast_mut()) = target as i32;
+                }
+            } else {
+                log::error!("设置发送目标失败：无法获取发送目标地址");
+            }
         }
     }
 
@@ -314,5 +386,6 @@ mod chat {
     }
 }
 
+// 为了兼容性保留
 pub use chat::ChatMessageReceiver;
 pub use chat::ChatMessageSender;

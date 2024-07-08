@@ -41,6 +41,12 @@ impl ActionController {
         self.get_value_copy(0xC4)
     }
 
+    pub fn force_derive(&self, action: ActionInfo) {
+        let current_action = self.get_value_mut::<ActionInfo>(0xBC);
+        current_action.set = action.set;
+        current_action.id = action.id;
+    }
+
     /// 控制器持有者（Entity）
     pub fn owner(&self) -> usize {
         self.get_value_copy(0x100)
