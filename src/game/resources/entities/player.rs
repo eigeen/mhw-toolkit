@@ -2,7 +2,6 @@ use std::ffi::CStr;
 
 use crate::{
     game::{
-        address::{player, weapon},
         mt_types::{Model, MtObject, Resource},
         prelude::Entity,
     },
@@ -131,6 +130,25 @@ impl MtObject for PlayerInfo {
 impl Resource for PlayerInfo {}
 
 impl PlayerInfo {
+    pub fn from_index(index: isize) -> Option<Self> {
+        if !(0..20).contains(&index) {
+            return None;
+        }
+
+        let offset = 0x58 + 0x740 * index;
+        let info_ptr = utils::get_ptr_with_offset(PLAYERS_BASE, &[offset])?;
+        if !(0x10000..0x150000000).contains(&(info_ptr as usize)) {
+            return None;
+        }
+
+        let this = Self::from_instance(info_ptr as usize);
+        if this.name().is_empty() {
+            None
+        } else {
+            Some(this)
+        }
+    }
+
     pub fn short_info(&self) -> Option<PlayerShortInfo> {
         let name = self.name();
         if name.is_empty() {
@@ -144,6 +162,10 @@ impl PlayerInfo {
         let name_ptr = (self.get_instance() as *const i8).wrapping_byte_add(0x78);
 
         unsafe { CStr::from_ptr(name_ptr).to_str().unwrap_or_default() }
+    }
+
+    pub fn steam_id(&self) -> u64 {
+        self.get_value_copy(0xE8)
     }
 }
 
@@ -169,7 +191,7 @@ impl Resource for PlayerShortInfo {}
 
 impl PlayerShortInfo {
     pub fn from_index(index: isize) -> Option<Self> {
-        if !(0..24).contains(&index) {
+        if !(0..20).contains(&index) {
             return None;
         }
         let offset = index * 0x58;
@@ -177,8 +199,12 @@ impl PlayerShortInfo {
         if ptr == 0 {
             return None;
         }
-
-        Some(Self::from_instance(ptr as usize))
+        let this = Self::from_instance(ptr as usize);
+        if this.name().is_empty() {
+            None
+        } else {
+            Some(this)
+        }
     }
 
     pub fn from_name(name: &str) -> Option<Self> {

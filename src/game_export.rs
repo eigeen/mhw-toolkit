@@ -10,6 +10,7 @@ pub const U_GUI_CHAT_BASE: *const usize = 0x1451C2400 as *const usize;
 pub const U_GUI_CHAT_STRUCT_OFFSETS: &[isize] = &[0x13FD0, 0x28F8];
 pub const U_GUI_CHAT_SEND_OFFSETS: &[isize] = &[0x13FD0, 0x325E];
 pub const U_GUI_CHAT_SEND_TARGET_OFFSETS: &[isize] = &[0x14748];
+pub const U_GUI_CHAT_SEND_TARGET_PLAYER_OFFSETS: &[isize] = &[0x14748 + 0x8];
 
 pub const MESSAGE_BASE: *const i32 = 0x144F85DB0 as *const i32;
 pub const MESSAGE_LEN_OFFSETS: &[isize] = &[0xBC];

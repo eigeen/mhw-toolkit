@@ -27,6 +27,12 @@ pub struct KeyEvent {
     pub event_type: KeyEventType,
 }
 
+impl KeyEvent {
+    pub fn is_key_down(&self) -> bool {
+        self.event_type == KeyEventType::KeyDown
+    }
+}
+
 struct DoubleClickBinding {
     pub interval: u64,
     pub callback: KeyEventCallback,

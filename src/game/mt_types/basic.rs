@@ -1,3 +1,5 @@
+use super::MtDti;
+
 /// Mt对象
 ///
 /// 提供基础的实例指针操作
@@ -56,7 +58,21 @@ pub trait Resource: MtObject {
         let ptr = self.get_instance() as isize + offset;
         T::from_instance(ptr as usize)
     }
+
+    /// 获取对象的虚函数
+    unsafe fn get_virtual_function(&self, index: isize) -> usize {
+        let vtable = *(self.get_instance() as *const *const usize);
+        let vfptr = vtable.offset(index);
+
+        vfptr as usize
+    }
+
+    unsafe fn get_dti(&self) -> Option<MtDti> {
+        todo!()
+    }
 }
+
+
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

@@ -180,15 +180,15 @@ pub mod chat {
 
     use super::send_chat_message;
 
-    #[repr(i32)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub enum SendTarget {
-        Default = -1,
-        Quest = 0,
-        OutsideQuest = 1,
-        Specified = 2,
-        AtHome = 3,
-        All = 4,
+        Default,
+        Quest,
+        OutsideQuest,
+        /// 指定玩家SteamID
+        Specified(u64),
+        AtHome,
+        All,
     }
 
     impl From<i32> for SendTarget {
@@ -196,10 +196,23 @@ pub mod chat {
             match value {
                 0 => SendTarget::Quest,
                 1 => SendTarget::OutsideQuest,
-                2 => SendTarget::Specified,
+                2 => SendTarget::Specified(0),
                 3 => SendTarget::AtHome,
                 4 => SendTarget::All,
                 _ => SendTarget::Default,
+            }
+        }
+    }
+
+    impl SendTarget {
+        pub fn as_i32(&self) -> i32 {
+            match self {
+                SendTarget::Default => -1,
+                SendTarget::Quest => 0,
+                SendTarget::OutsideQuest => 1,
+                SendTarget::Specified(_) => 2,
+                SendTarget::AtHome => 3,
+                SendTarget::All => 4,
             }
         }
     }
@@ -263,6 +276,9 @@ pub mod chat {
 
                 // 设置发送目标
                 if msg.target != SendTarget::Default {
+                    if let SendTarget::Specified(player_id) = msg.target {
+                        Self::set_send_target_player(player_id);
+                    }
                     Self::set_send_target(msg.target);
                 }
                 while !Self::try_send(&msg.msg) {
@@ -288,9 +304,21 @@ pub mod chat {
                 game_export::U_GUI_CHAT_BASE as *const i32,
                 game_export::U_GUI_CHAT_SEND_TARGET_OFFSETS,
             )
-            .unwrap_or(SendTarget::All as i32);
+            .unwrap_or(SendTarget::All.as_i32());
+            match send_target_i32 {
+                2 => SendTarget::Specified(Self::get_current_send_player_target().unwrap_or(0)),
+                other => SendTarget::from(other),
+            }
+        }
 
-            SendTarget::from(send_target_i32)
+        /// 获取当前设置发送目标的玩家SteamID
+        ///
+        /// 仅在SendTarget::Specified下有效
+        fn get_current_send_player_target() -> Option<u64> {
+            utils::get_value_with_offset(
+                game_export::U_GUI_CHAT_BASE as *const u64,
+                game_export::U_GUI_CHAT_SEND_TARGET_PLAYER_OFFSETS,
+            )
         }
 
         fn can_send() -> bool {
@@ -309,10 +337,23 @@ pub mod chat {
                 game_export::U_GUI_CHAT_SEND_TARGET_OFFSETS,
             ) {
                 unsafe {
-                    *(send_target_i32.cast_mut()) = target as i32;
+                    *(send_target_i32.cast_mut()) = target.as_i32();
                 }
             } else {
                 log::error!("设置发送目标失败：无法获取发送目标地址");
+            }
+        }
+
+        fn set_send_target_player(player_id: u64) {
+            if let Some(player_u64) = utils::get_ptr_with_offset(
+                game_export::U_GUI_CHAT_BASE as *const u64,
+                game_export::U_GUI_CHAT_SEND_TARGET_PLAYER_OFFSETS,
+            ) {
+                unsafe {
+                    *(player_u64.cast_mut()) = player_id;
+                }
+            } else {
+                log::error!("设置发送目标玩家失败：无法获取发送目标玩家地址");
             }
         }
     }
@@ -345,36 +386,32 @@ pub mod chat {
         }
 
         pub fn try_recv(&self) -> Option<String> {
-            if let Some(msg_ptr) = utils::get_ptr_with_offset(
+            let msg_ptr = utils::get_ptr_with_offset(
                 game_export::MESSAGE_BASE,
                 game_export::MESSAGE_BODY_OFFSETS,
-            ) {
-                let msg_ptr = msg_ptr as *mut u8;
-                if let Some(msg_len_ptr) = utils::get_ptr_with_offset(
-                    game_export::MESSAGE_BASE,
-                    game_export::MESSAGE_LEN_OFFSETS,
-                ) {
-                    let msg_len = unsafe { *msg_len_ptr };
-                    if msg_len == 0 {
-                        return None;
-                    }
-                    let msg = unsafe {
-                        String::from_utf8_lossy(std::slice::from_raw_parts(
-                            msg_ptr,
-                            msg_len as usize,
-                        ))
-                    };
-                    if msg.starts_with(&self.prefix) {
-                        let msg = msg.to_string();
-                        // 清除缓冲区防止重复读
-                        unsafe {
-                            std::ptr::write_bytes(msg_ptr, 0, msg_len as usize);
-                            *(msg_len_ptr as *mut i32) = 0;
-                        }
-                        return Some(msg);
-                    }
-                }
+            )?;
+            let msg_ptr = msg_ptr as *mut u8;
+            let msg_len_ptr = utils::get_ptr_with_offset(
+                game_export::MESSAGE_BASE,
+                game_export::MESSAGE_LEN_OFFSETS,
+            )?;
+            let msg_len = unsafe { *msg_len_ptr };
+            if msg_len == 0 {
+                return None;
+            }
+            let msg = unsafe {
+                String::from_utf8_lossy(std::slice::from_raw_parts(msg_ptr, msg_len as usize))
             };
+            if msg.starts_with(&self.prefix) {
+                let msg = msg.to_string();
+                // 清除缓冲区防止重复读
+                unsafe {
+                    std::ptr::write_bytes(msg_ptr, 0, msg_len as usize);
+                    *(msg_len_ptr as *mut i32) = 0;
+                }
+                return Some(msg);
+            }
+
             None
         }
     }
