@@ -1,4 +1,4 @@
-#[cfg(feature = "LuaEngine")]
+#[cfg(feature = "lua_engine")]
 fn link_luae() {
     println!("cargo:rustc-link-lib=static=LuaEngine");
 }
@@ -6,6 +6,6 @@ fn link_luae() {
 fn main() {
     println!("cargo:rustc-link-search=lib");
 
-    #[cfg(feature = "LuaEngine")]
+    #[cfg(feature = "lua_engine")]
     link_luae();
 }
