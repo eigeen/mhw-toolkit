@@ -133,7 +133,7 @@ pub fn get_ptr_with_offset<T>(base_addr: *const T, offsets: &[isize]) -> Option<
 pub fn is_mhw_foreground() -> bool {
     // 获取当前前台窗口句柄
     let foreground_hwnd = unsafe { GetForegroundWindow() };
-    if foreground_hwnd.0 == 0 {
+    if foreground_hwnd.0.is_null() {
         return false;
     }
 
