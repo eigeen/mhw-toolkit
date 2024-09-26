@@ -1,12 +1,11 @@
 use std::ffi::CStr;
 
 use crate::{
-    game::{
-        mt_types::{Model, MtObject, Resource},
-        prelude::Entity,
-    },
+    game::mt_types::{Model, MtObject, Resource},
     utils,
 };
+
+use super::{Entity, Health};
 
 const PLAYER_BASE: *const usize = 0x145011760 as *const _;
 const PLAYERS_BASE: *const usize = 0x14500CA60 as *const _;
@@ -97,6 +96,10 @@ impl Player {
         }
 
         Some(self.get_inline_object(0x76B0))
+    }
+
+    pub fn health(&self) -> Health {
+        self.get_object(0x7630)
     }
 
     fn frame_speed_multiplier_addr(&self) -> usize {

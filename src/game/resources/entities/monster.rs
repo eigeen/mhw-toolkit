@@ -1,4 +1,6 @@
-use crate::game::mt_types::{Entity, Model, MtObject, Resource};
+use crate::game::mt_types::{Model, MtObject, Resource};
+
+use super::Entity;
 
 #[derive(Clone)]
 pub struct Monster {

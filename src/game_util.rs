@@ -1,5 +1,7 @@
+use std::ffi::c_void;
 use std::ffi::{c_char, CString};
 
+use crate::game::address::{self, AddressRepository};
 use crate::game_export;
 use crate::utils;
 
@@ -118,13 +120,24 @@ pub fn show_system_message(message: &str, color: SystemMessageColor) {
         return;
     };
 
-    let show_message: extern "C" fn(*const usize, *const c_char, i32, i32, u8) =
-        unsafe { std::mem::transmute(0x141A53400_i64) };
+    let func_addr = match AddressRepository::get_instance()
+        .lock()
+        .unwrap()
+        .get_address(address::chat::SystemMessage)
+    {
+        Ok(addr) => addr,
+        Err(_) => {
+            error!("Failed to get address of SystemMessage");
+            return;
+        }
+    };
+    let show_message: extern "C" fn(*const c_void, *const c_char, f32, i32, u8) =
+        unsafe { std::mem::transmute(func_addr) };
     let message_cstring = CString::new(message).unwrap();
     show_message(
-        unsafe { *game_export::CHAT_MAIN_PTR as *const usize },
+        unsafe { *game_export::CHAT_MAIN_PTR as *const c_void },
         message_cstring.as_ptr(),
-        message.len() as i32,
+        0.0,
         -1,
         color as u8,
     )
@@ -426,3 +439,4 @@ pub mod chat {
 // 为了兼容性保留
 pub use chat::ChatMessageReceiver;
 pub use chat::ChatMessageSender;
+use log::error;

@@ -90,7 +90,7 @@ pub mod inline {
 pub mod player {
     use address_scanner::AddressRecord;
 
-    // extern "C" fn(*const c_void, *const c_void) -> i64;
+    // extern "fastcall" fn(*const c_void, *const c_void) -> *const c_void;
     #[derive(AddressRecord)]
     #[record(pattern = "8B ?? ?? ?? ?? ?? 48 85 C9 74 ?? E8 ?? ?? ?? ?? 33 C0 48 ?? ?? ?? C3", offset = -5)]
     pub struct Hit; // 0x141F50480
@@ -111,9 +111,25 @@ pub mod player {
     #[record(pattern = "0F 57 C0 0F 2F ?? ?? ?? ?? ?? 0F ?? ?? ?? ?? ?? F3 ?? ?? ?? ?? ?? ?? ?? 48 ?? ?? ?? ?? ?? ?? F3 ?? ?? ?? ?? ?? ?? ?? 33 C9 49 89", offset = -10)]
     pub struct MuteCheck; // 0x141A4FCC0
 
+    // extern "fastcall" fn(*const c_void, *const c_void) -> *const c_void;
     #[derive(AddressRecord)]
     #[record(pattern = "48 89 ?? ?? ?? 57 48 ?? ?? ?? 48 8B 02 48 8B F1 8B ?? ?? ?? ?? ?? 48 8B CA 48 8B FA FF ?? ?? 3B 58 ?? 0F ?? ?? ?? ?? ?? 0F 10 ?? ?? 0F 11 ?? ?? 0F 10 ?? ?? 0F 11 ?? ?? 8B 46 ?? 89 47 ??", offset = -5)]
     pub struct ClonePlayerShortInfo; // 0x140F9ED20
+
+    // extern "fastcall" fn(save_data: *const c_void, offset: u32, value: u8);
+    #[derive(AddressRecord)]
+    #[record(pattern = "FF 15 3A 8C AA 01 48 8D 4E 08 40 88 AC 37 D8 03 14 00", offset = -32)]
+    pub struct SetSettings; // 0x1413683A0
+
+    // extern "fastcall" fn(save_data: *const c_void, add_xp: u32);
+    #[derive(AddressRecord)]
+    #[record(pattern = "48 83 C1 08 FF 15 03 70 AA 01 48 8D 4F 08 40 32 ED FF 15 F6 6F AA 01 8B 8F ?? ?? ?? ?? B8 FF E0 F5 05", offset = -35)]
+    pub struct AddHrXp; // 0x141369FD0
+
+    // extern "fastcall" fn(save_data: *const c_void, add_xp: u32, a3: bool);
+    #[derive(AddressRecord)]
+    #[record(pattern = "48 89 ?? ?? ?? 48 89 ?? ?? ?? 48 89 ?? ?? ?? 41 54 41 56 41 57 48 ?? ?? ?? 48 8B F1 41 0F B6 F8 48 83 C1 08", offset = -5)]
+    pub struct AddMrXp; // 0x14136A720
 }
 
 pub mod chat {
@@ -122,6 +138,18 @@ pub mod chat {
     #[derive(AddressRecord)]
     #[record(pattern = "81 08 10 00 00 48 ?? ?? ?? ?? ?? ?? 66 44 89 01 48 3B D0 74 ?? 44 89", offset = -5)]
     pub struct MessageSent;
+
+    // Push a message to the chat window
+    // player message, sticker, not including system messages.
+    // extern "fastcall" fn(*const c_void, *const c_void, u32, bool) -> u8;
+    #[derive(AddressRecord)]
+    #[record(pattern = "48 89 ?? ?? ?? 55 57 41 54 41 56 41 57 48 8D AC 24 60 FE FF FF 48 81 EC A0 02 00 00 45 33 F6 C6 85", offset = -5)]
+    pub struct PushMessageToWindow; // 0x141A50D70
+
+    // extern "fastcall" fn(chat_base: *const c_void, msg: *const i8, delay_secs: f32, unk: u32, is_purple: bool) -> *const c_void;
+    #[derive(AddressRecord)]
+    #[record(pattern = "0F 29 B4 24 B0 01 00 00 48 8B DA 0F 28 F2 48 8B F9 75 09", offset = -25)]
+    pub struct SystemMessage; // 0x141A53400
 }
 
 pub mod quest {
