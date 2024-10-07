@@ -72,7 +72,7 @@ pub trait Resource: MtObject {
     }
 }
 
-
+impl<T: MtObject> Resource for T {}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

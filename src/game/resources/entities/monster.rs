@@ -17,8 +17,6 @@ impl MtObject for Monster {
     }
 }
 
-impl Resource for Monster {}
-
 impl Model for Monster {}
 
 impl Entity for Monster {}

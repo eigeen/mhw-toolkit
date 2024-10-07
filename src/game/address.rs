@@ -123,8 +123,8 @@ pub mod player {
 
     // extern "fastcall" fn(save_data: *const c_void, add_xp: u32);
     #[derive(AddressRecord)]
-    #[record(pattern = "48 83 C1 08 FF 15 03 70 AA 01 48 8D 4F 08 40 32 ED FF 15 F6 6F AA 01 8B 8F ?? ?? ?? ?? B8 FF E0 F5 05", offset = -35)]
-    pub struct AddHrXp; // 0x141369FD0
+    #[record(pattern = "48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 54 41 56 41 57 48 83 EC 20 48 8B F9 8B F2", offset = -5)]
+    pub struct AddHrXp; // 0x14136ACA0 15.23
 
     // extern "fastcall" fn(save_data: *const c_void, add_xp: u32, a3: bool);
     #[derive(AddressRecord)]
@@ -176,7 +176,7 @@ pub mod quest {
 
     #[derive(AddressRecord)]
     #[record(pattern = "F3 0F 2C C0 F3 0F 11 81 A4 31 01 00", offset = -67)]
-    pub struct Abandon;
+    pub struct Abandon; // 0x141B71570
 
     #[derive(AddressRecord)]
     #[record(pattern = "48 81 EC 60 02 00 00 45 33 FF 48 8B D9", offset = -28)]

@@ -26,8 +26,6 @@ impl MtObject for ActionController {
     }
 }
 
-impl Resource for ActionController {}
-
 impl ActionController {
     pub fn current_action(&self) -> ActionInfo {
         self.get_value_copy(0xAC)

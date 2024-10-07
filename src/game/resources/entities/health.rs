@@ -14,8 +14,6 @@ impl MtObject for Health {
     }
 }
 
-impl Resource for Health {}
-
 impl Health {
     pub fn max(&self) -> f32 {
         self.get_value_copy(0x60)

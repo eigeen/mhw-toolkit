@@ -23,8 +23,6 @@ where
     }
 }
 
-impl<T> Resource for MtArray<T> where T: MtObject {}
-
 impl<T> MtArray<T>
 where
     T: MtObject,

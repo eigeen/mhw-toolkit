@@ -23,8 +23,6 @@ impl MtObject for SaveData {
     }
 }
 
-impl Resource for SaveData {}
-
 impl SaveData {
     pub fn from_index(index: i32) -> Option<Self> {
         if !(0..=2).contains(&index) {

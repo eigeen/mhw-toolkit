@@ -2,15 +2,10 @@ use std::ffi::CStr;
 
 use crate::{
     game::mt_types::{Model, MtObject, Resource},
-    utils,
+    game_export, utils,
 };
 
 use super::{Entity, Health};
-
-const PLAYER_BASE: *const usize = 0x145011760 as *const _;
-const PLAYERS_BASE: *const usize = 0x14500CA60 as *const _;
-const PLAYER_OFFSET: &[isize] = &[0x50];
-const PLAYER_SHORT_INFO_BASE: *const usize = 0x1450112F0 as *const _;
 
 // ##### Player 玩家对象 #####
 
@@ -30,8 +25,6 @@ impl MtObject for Player {
     }
 }
 
-impl Resource for Player {}
-
 impl Model for Player {}
 
 impl Entity for Player {}
@@ -47,7 +40,8 @@ impl std::fmt::Debug for Player {
 impl Player {
     /// 获取当前操控的玩家对象
     pub fn current_player() -> Option<Self> {
-        let player_addr = utils::get_value_with_offset(PLAYER_BASE, PLAYER_OFFSET)?;
+        let player_addr =
+            utils::get_value_with_offset(game_export::PLAYER_BASE, game_export::PLAYER_OFFSET)?;
         if player_addr == 0 {
             return None;
         }
@@ -63,7 +57,7 @@ impl Player {
             return Self::current_player();
         }
         let offset = 0x58 + 0x740 * index;
-        let player_addr = utils::get_value_with_offset(PLAYERS_BASE, &[offset])?;
+        let player_addr = utils::get_value_with_offset(game_export::PLAYER_BASE, &[offset])?;
         if !(0x10000..0x150000000).contains(&player_addr) && player_addr != u32::MAX as usize {
             return None;
         }
@@ -71,7 +65,7 @@ impl Player {
         Some(Self::from_instance(player_addr))
     }
 
-    pub fn get_frame_speed_multiplier_mut(&self) -> &'static mut f32 {
+    pub fn frame_speed_multiplier_mut(&self) -> &'static mut f32 {
         let addr = self.frame_speed_multiplier_addr();
         unsafe { (addr as *mut f32).as_mut().unwrap() }
     }
@@ -102,9 +96,13 @@ impl Player {
         self.get_object(0x7630)
     }
 
+    pub fn quest_id(&self) -> i32 {
+        self.get_value_copy(0x10D8)
+    }
+
     fn frame_speed_multiplier_addr(&self) -> usize {
         unsafe {
-            let a = *(0x145121688 as *const u32) as usize;
+            let a = *(game_export::PLAYER_FRAME_SPEED_BASE) as usize;
             let b = *((self.get_instance() + 0x10) as *const i32) as usize;
 
             a + b * 0xF8 + 0x9C
@@ -130,8 +128,6 @@ impl MtObject for PlayerInfo {
     }
 }
 
-impl Resource for PlayerInfo {}
-
 impl PlayerInfo {
     pub fn from_index(index: isize) -> Option<Self> {
         if !(0..20).contains(&index) {
@@ -139,7 +135,7 @@ impl PlayerInfo {
         }
 
         let offset = 0x58 + 0x740 * index;
-        let info_ptr = utils::get_ptr_with_offset(PLAYERS_BASE, &[offset])?;
+        let info_ptr = utils::get_ptr_with_offset(game_export::PLAYER_BASE, &[offset])?;
         if !(0x10000..0x150000000).contains(&(info_ptr as usize)) {
             return None;
         }
@@ -190,15 +186,14 @@ impl MtObject for PlayerShortInfo {
     }
 }
 
-impl Resource for PlayerShortInfo {}
-
 impl PlayerShortInfo {
     pub fn from_index(index: isize) -> Option<Self> {
         if !(0..20).contains(&index) {
             return None;
         }
         let offset = index * 0x58;
-        let ptr = utils::get_value_with_offset(PLAYER_SHORT_INFO_BASE, &[0x1AB0 + offset])?;
+        let ptr =
+            utils::get_value_with_offset(game_export::PLAYER_SHORT_INFO_BASE, &[0x1AB0 + offset])?;
         if ptr == 0 {
             return None;
         }
@@ -274,8 +269,6 @@ impl MtObject for PlayerWeaponInfo {
         Self { instance: ptr }
     }
 }
-
-impl Resource for PlayerWeaponInfo {}
 
 impl PlayerWeaponInfo {
     pub fn weapon(&self) -> WeaponInfo {

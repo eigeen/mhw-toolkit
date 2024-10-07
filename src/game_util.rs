@@ -84,7 +84,7 @@ struct UGUIChat {
 pub fn show_game_message(message: &str) {
     // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
     // 可能存在不稳定性，待测试
-    if utils::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
+    if utils::get_ptr_with_offset(game_export::PLAYER_BASE, game_export::PLAYER_OFFSET)
         .map_or(true, |ptr| ptr.is_null())
     {
         return;
@@ -114,7 +114,7 @@ pub enum SystemMessageColor {
 pub fn show_system_message(message: &str, color: SystemMessageColor) {
     // 为了防止panic，通过检查玩家基址是否为空判断是否进入游戏场景
     // 可能存在不稳定性，待测试
-    if utils::get_ptr_with_offset(game_export::PLAYER_PTR, &[game_export::PLAYER_OFFSET])
+    if utils::get_ptr_with_offset(game_export::PLAYER_BASE, game_export::PLAYER_OFFSET)
         .map_or(true, |ptr| ptr.is_null())
     {
         return;

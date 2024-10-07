@@ -14,8 +14,6 @@ impl MtObject for MtDti {
     }
 }
 
-impl Resource for MtDti {}
-
 impl MtDti {
     pub fn name(&self) -> String {
         todo!()
